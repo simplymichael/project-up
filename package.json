@@ -46,7 +46,8 @@
     "markdown-viewer": "1.0.1",
     "mocha": "8.2.1",
     "nyc": "15.1.0",
-    "run-script-os": "1.1.4"
+    "run-script-os": "1.1.4",
+    "standard-version": "9.1.0"
   },
   "config": {
     "commitizen": {
