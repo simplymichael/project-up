@@ -1,0 +1,59 @@
+{
+  "name": "project-up",
+  "version": "0.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "scripts": {
+    "pretest": "npm run lint",
+    "test": "run-script-os",
+    "test:nix": "NODE_ENV=test mocha _tests/\"{,/**/}*.test.js\"",
+    "test:win32": "set NODE_ENV=test& mocha _tests/\"{,/**/}*.test.js\"",
+    "test:watch": "npm test -- -w",
+    "test:coverage": "nyc npm test",
+    "commit": "git-cz",
+    "lint": "./node_modules/.bin/eslint ./src",
+    "lint:fix": "npm run lint -- --fix",
+    "prerelease": "npm run test:coverage",
+    "release": "standard-version",
+    "first-release": "npm run release -- --first-release && git push origin --tags",
+    "release:dry-run": "npm run release -- --dry-run",
+    "first-release:dry-run": "npm run first-release -- --dry-run",
+    "view-readme": "./node_modules/.bin/markdown-viewer -b",
+    "view-license": "./node_modules/.bin/markdown-viewer -f LICENSE.md -b"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/simplymichael/project-up.git"
+  },
+  "keywords": [
+    "project",
+    "setup",
+    "cli",
+    "npm"
+  ],
+  "author": "simplymichael <simplymichaelorji@gmail.com> (https://github.com/simplymichael)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/simplymichael/project-up/issues"
+  },
+  "homepage": "https://github.com/simplymichael/project-up#readme",
+  "devDependencies": {
+    "chai": "4.2.0",
+    "commitizen": "4.2.2",
+    "cz-conventional-changelog": "3.3.0",
+    "eslint": "7.17.0",
+    "ghooks": "2.0.4",
+    "markdown-viewer": "1.0.1",
+    "mocha": "8.2.1",
+    "nyc": "15.1.0",
+    "run-script-os": "1.1.4"
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-conventional-changelog"
+    },
+    "ghooks": {
+      "pre-commit": "npm run lint && npm run test:coverage"
+    }
+  }
+}

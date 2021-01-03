@@ -1,0 +1,8 @@
+# Coverage directory
+coverage
+node_modules
+build
+.DS_Store
+.nyc_output
+.markdown-viewer
+_steps.md

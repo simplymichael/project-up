@@ -1,0 +1,8 @@
+coverage/
+_tests/
+.env
+.editorconfig
+.npmignore
+.travis.yml
+.nyc_output/
+.markdown-viewer
