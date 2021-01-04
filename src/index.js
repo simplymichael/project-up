@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const util = require('util');
 const cp = require('child_process');
 const write = require('write');
 const read = require('read-file');
@@ -18,7 +19,8 @@ async function setup(projectName) {
   const cwd = process.cwd();
   const gitInitialized = fs.existsSync(`${cwd}/.git`);
   const npmInitialized = fs.existsSync(`${cwd}/package.json`);
-  const devDependencies = [
+  let dependencies = [];
+  let devDependencies = [
     'chai',
     'commitizen',
     'cz-conventional-changelog',
@@ -95,11 +97,47 @@ async function setup(projectName) {
       name: 'markdown-viewer',
       message: 'Install markdown-viewer? (https://npmjs.com/package/markdown-viewer)',
       choices: ['yes', 'no']
+    },
+    {
+      type: 'input',
+      name: 'dependencies',
+      message: 'List any dependencies, separated by spaces: (dep@version dep2 dep3@version)'
+    },
+    {
+      type: 'input',
+      name: 'dev-dependencies',
+      message: 'List any dev dependencies, separated by spaces: (dep@version dep2 dep3@version)'
+    },
+    {
+      type: 'input',
+      name: 'proceed',
+      message: function(answers) {
+        log(util.inspect(answers));
+
+        return 'These are your settings is this ok? [Y/n]';
+      }
     }
   ];
   const answers = await ask(questions);
   const srcDir = answers['src-directory'];
   const testDir = answers['test-directory'];
+  const splitRegex = /\s+,?\s+/;
+
+  if(answers['proceed'].toLowerCase() === 'n') {
+    process.exit('0');
+  }
+
+  if(answers['dependencies']) {
+    const userDeps = answers['dependencies'].split(splitRegex);
+
+    dependencies = dependencies.concat(userDeps);
+  }
+
+  if(answers['dev-dependencies']) {
+    const userDevDeps = answers['dev-dependencies'].split(splitRegex);
+
+    devDependencies = devDependencies.concat(userDevDeps);
+  }
 
   devDependencies.push(answers['linter'].toLowerCase());
 
@@ -141,9 +179,15 @@ async function setup(projectName) {
     log(`Test directory "${testDir}" created`);
   }
 
-  log('Installing required dev dependencies... This might take a while...');
+  if(dependencies.length > 0) {
+    log('Installing dependencies... This might take a while...');
+    install(dependencies);
+    log('Dependencies installed');
+  }
+
+  log('Installing dev dependencies... This might take a while...');
   install([], devDependencies);
-  log('Dependencies installed');
+  log('Dev dependencies installed');
 
   log('Updating package.json...');
   await writePackageJson({
