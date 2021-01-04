@@ -47,17 +47,17 @@ function initNpm() {
  */
 function install(deps, devDeps) { console.log('Installing dependencies');
   const processOpts = {
-    stdio: 'inherit',
+    //stdio: 'inherit',
     encoding : 'utf8'
   };
 
   if(Array.isArray(deps) && deps.length > 0) {
-    const result = cp.spawnSync('npm', [`i -S ${deps.join(' ')}`], processOpts);
+    const result = cp.execSync(`npm i -S ${deps.join(' ')}`, processOpts);
     console.log(result.stdout);
   }
 
   if(Array.isArray(devDeps) && devDeps.length > 0) {
-    const result2 = cp.spawnSync('npm', [`i -D ${devDeps.join(' ')}`], processOpts);
+    const result2 = cp.execSync(`npm i -D ${devDeps.join(' ')}`, processOpts);
     console.log(result2.stdout);
   }
 }

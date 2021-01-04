@@ -114,10 +114,13 @@ async function run(path) {
     }
   }
 
-
+  log('Installing dependencies...');
   install([], devDependencies);
+  log('Dependencies installed');
 
+  log('Updating package.json...');
   await writePackageJson({
     linter: answers['linter'].toLowerCase(),
   });
+  log('package.json updated');
 }
