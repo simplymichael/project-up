@@ -22,6 +22,7 @@ module.exports = {
  *   - directory {string} the project directory name
  */
 async function setup(projectName, opts) {
+  const { directory: projectDir } = opts;
   const cwd = process.cwd();
   const gitInitialized = fs.existsSync(`${cwd}/.git`);
   const npmInitialized = fs.existsSync(`${cwd}/package.json`);
@@ -144,9 +145,37 @@ async function setup(projectName, opts) {
       type: 'input',
       name: 'proceed',
       message: function(answers) {
-        log(util.inspect(answers));
+        const settings = {
+          'Project name': projectName,
+          'Project directory': projectDir,
+          'Description': answers['description'],
+          'Project owner': answers['name'],
+          'GitHub username': answers['gh-username'],
+          'GitHub email': answers['gh-email'],
+          'License': {
+            'name': answers['license'],
+          },
+          'Linter': answers['linter'],
+          'Dependencies:': answers['dependencies'],
+          'Dev dependencies': answers['dev-dependencies']
+        };
 
-        return 'These are your settings is this ok? [Y/n]:';
+        if(answers['license'].toLowerCase() !== 'none') {
+          settings['License']['Owner'] = answers['license-owner'];
+          settings['License']['Year'] = answers['license-year'];
+        }
+
+        if(answers['src-directory']) {
+          settings['Source directory'] = answers['src-directory'];
+        }
+
+        if(answers['test-directory']) {
+          settings['Test directory'] = answers['test-directory'];
+        }
+
+        log(util.inspect(settings));
+
+        return 'These are your settings; is this ok? [Y/n]:';
       }
     }
   ];
