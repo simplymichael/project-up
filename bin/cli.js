@@ -7,15 +7,26 @@ const package = require('../src');
 const { setup } = package;
 const log = console.log;
 let projectDir = path.basename(path.resolve(process.cwd()));
+let projectName = projectDir;
 
 program
   .version(require('../package.json').version)
-  .arguments('<path>');
+  .arguments('<name>');
 
 program.parse(process.argv);
 
 if (program.args.length > 0) {
-  projectDir = program.args[0]; //program.outputHelp();
+  projectName = program.args[0];
+  projectDir = projectName.replace(/\s+/g, '-').toLowerCase();
+
+  if(projectName.toLowerCase() === projectDir) {
+    projectName = projectName.replace(
+      /[-, _](\w)/g,
+      (g, c) => ' ' + c.toUpperCase()
+    );
+  }
+
+  //program.outputHelp();
 
   if(!fs.existsSync(projectDir)) {
     log(`Creating ${projectDir}...`);
@@ -27,5 +38,5 @@ if (program.args.length > 0) {
 }
 
 (async function() {
-  await setup();
+  await setup(projectName);
 })();

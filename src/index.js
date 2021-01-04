@@ -1,7 +1,12 @@
 const fs = require('fs');
+const path = require('path');
 const cp = require('child_process');
+const write = require('write');
+const read = require('read-file');
 const inquirer = require('inquirer');
 const writePackage = require('write-pkg');
+const badges = require('../badges');
+const log = console.log;
 //const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 module.exports = {
@@ -9,15 +14,162 @@ module.exports = {
 };
 
 
+async function setup(projectName) {
+  const cwd = process.cwd();
+  const gitInitialized = fs.existsSync(`${cwd}/.git`);
+  const npmInitialized = fs.existsSync(`${cwd}/package.json`);
+  const devDependencies = [
+    'chai',
+    'commitizen',
+    'cz-conventional-changelog',
+    'ghooks',
+    'mocha',
+    'nyc',
+    'run-script-os',
+    'standard-version'
+  ];
+  const questions = [
+    {
+      type: 'input',
+      name: 'description',
+      message: 'Project description',
+    },
+    {
+      type: 'input',
+      name: 'gh-username',
+      message: 'Github username (git config user.name value)',
+      when: function() {
+        return !gitInitialized;
+      }
+    },
+    {
+      type: 'input',
+      name: 'gh-email',
+      message: 'Github email (git config user.email value)',
+      when: function() {
+        return !gitInitialized;
+      }
+    },
+    {
+      type: 'list',
+      name: 'create-src-directory',
+      message: 'Create source directory',
+      choices: ['yes', 'no', 'already have']
+    },
+    {
+      type: 'input',
+      name: 'src-directory',
+      message: 'Specify your source directory',
+      default: 'src',
+      when: function(answers) {
+        const createSrcDir = answers['create-src-directory'];
+
+        return createSrcDir === 'yes' || createSrcDir === 'already have';
+      }
+    },
+    {
+      type: 'list',
+      name: 'create-test-directory',
+      message: 'Create test directory',
+      choices: ['yes', 'no', 'already have']
+    },
+    {
+      type: 'input',
+      name: 'test-directory',
+      message: 'Specify your test directory',
+      default: '_tests',
+      when: function(answers) {
+        const createTestDir = answers['create-test-directory'];
+
+        return createTestDir === 'yes' || createTestDir === 'already have';
+      }
+    },
+    {
+      type: 'list',
+      name: 'linter',
+      message: 'Select a linter',
+      choices: ['ESLint', 'Standard']
+    },
+    {
+      type: 'list',
+      name: 'markdown-viewer',
+      message: 'Install markdown-viewer? (https://npmjs.com/package/markdown-viewer)',
+      choices: ['yes', 'no']
+    }
+  ];
+  const answers = await ask(questions);
+  const srcDir = answers['src-directory'];
+  const testDir = answers['test-directory'];
+
+  devDependencies.push(answers['linter'].toLowerCase());
+
+  if(answers['markdown-viewer'] === 'yes') {
+    devDependencies.push('markdown-viewer');
+  }
+
+  // If the directory is not a git-directory, then initialize git
+  if(!gitInitialized) {
+    log('Initializing git...');
+    gitInit({
+      github: {
+        username: answers['gh-username'],
+        email: answers['gh-email']
+      },
+    });
+    log('Initialized empty git repository');
+  } else {
+    log('The specified directory is a git repository... skipping "git init"');
+  }
+
+  if(!npmInitialized) {
+    log('Creating package.json...');
+    npmInit();
+    log('package.json created');
+  } else {
+    log('The specified directory is already contains a package.json file... skipping "npm init"');
+  }
+
+  if(srcDir && !fs.existsSync(`${cwd}/${srcDir}`)) {
+    log('Creating source directory...');
+    fs.mkdirSync(`${cwd}/${srcDir}`);
+    log(`Source directory "${srcDir}" created`);
+  }
+
+  if(testDir && !fs.existsSync(`${cwd}/${testDir}`)) {
+    log('Creating test directory...');
+    fs.mkdirSync(`${cwd}/${testDir}`);
+    log(`Test directory "${testDir}" created`);
+  }
+
+  log('Installing required dev dependencies... This might take a while...');
+  install([], devDependencies);
+  log('Dependencies installed');
+
+  log('Updating package.json...');
+  await writePackageJson({
+    linter: answers['linter'].toLowerCase(),
+    useMarkdownViewer: answers['markdown-viewer'] === 'yes',
+    sourceDirectory: srcDir,
+    testDirectory: testDir,
+  });
+  log('package.json updated');
+
+  log('Creating README file...');
+  await writeReadMe(projectName, {
+    description: answers['description'],
+  });
+  log('README file created');
+}
+
 function ask(questions) {
   return inquirer
     .prompt(questions)
     .then(answers => answers)
     .catch(error => {
       if(error.isTtyError) {
-        console.log('Prompt cannot be rendered in the current environment');
+        log('Prompt cannot be rendered in the current environment');
       } else {
-        console.log('Something has gone wrong');
+        log('Something has gone wrong');
       }
     });
 }
@@ -122,139 +274,40 @@ async function writePackageJson(opts) {
   await writePackage(packageJson);
 }
 
-async function setup() {
+function writeReadMe(projectName, opts) {
   const cwd = process.cwd();
-  const log = console.log;
-  const gitInitialized = fs.existsSync(`${cwd}/.git`);
-  const npmInitialized = fs.existsSync(`${cwd}/package.json`);
-  const devDependencies = [
-    'chai',
-    'commitizen',
-    'cz-conventional-changelog',
-    'ghooks',
-    'mocha',
-    'nyc',
-    'run-script-os',
-    'standard-version'
-  ];
-  const questions = [
-    {
-      type: 'input',
-      name: 'gh-username',
-      message: 'Github username (git config user.name value)',
-      when: function() {
-        return !gitInitialized;
-      }
-    },
-    {
-      type: 'input',
-      name: 'gh-email',
-      message: 'Github email (git config user.email value)',
-      when: function() {
-        return !gitInitialized;
-      }
-    },
-    {
-      type: 'list',
-      name: 'create-src-directory',
-      message: 'Create source directory',
-      choices: ['yes', 'no', 'already have']
-    },
-    {
-      type: 'input',
-      name: 'src-directory',
-      message: 'Specify your source directory',
-      default: 'src',
-      when: function(answers) {
-        const createSrcDir = answers['create-src-directory'];
-
-        return createSrcDir === 'yes' || createSrcDir === 'already have';
-      }
-    },
-    {
-      type: 'list',
-      name: 'create-test-directory',
-      message: 'Create test directory',
-      choices: ['yes', 'no', 'already have']
-    },
-    {
-      type: 'input',
-      name: 'test-directory',
-      message: 'Specify your test directory',
-      default: '_tests',
-      when: function(answers) {
-        const createTestDir = answers['create-test-directory'];
-
-        return createTestDir === 'yes' || createTestDir === 'already have';
-      }
-    },
-    {
-      type: 'list',
-      name: 'linter',
-      message: 'Select a linter',
-      choices: ['ESLint', 'Standard']
-    },
-    {
-      type: 'list',
-      name: 'markdown-viewer',
-      message: 'Install markdown-viewer? (https://npmjs.com/package/markdown-viewer)',
-      choices: ['yes', 'no']
-    }
-  ];
-  const answers = await ask(questions);
-  const srcDir = answers['src-directory'];
-  const testDir = answers['test-directory'];
-
-  devDependencies.push(answers['linter'].toLowerCase());
-
-  if(answers['markdown-viewer'] === 'yes') {
-    devDependencies.push('markdown-viewer');
-  }
-
-  // If the directory is not a git-directory, then initialize git
-  if(!gitInitialized) {
-    log('Initializing git...');
-    gitInit({
-      github: {
-        username: answers['gh-username'],
-        email: answers['gh-email']
-      },
-    });
-    console.log('Initialized empty git repository');
-  } else {
-    log('The specified directory is a git repository... skipping "git init"');
-  }
-
-  if(!npmInitialized) {
-    log('Creating package.json...');
-    npmInit();
-    log('package.json created');
-  } else {
-    log('The specified directory is already contains a package.json file... skipping "npm init"');
-  }
-
-  if(srcDir && !fs.existsSync(`${cwd}/${srcDir}`)) {
-    log('Creating source directory...');
-    fs.mkdirSync(`${cwd}/${srcDir}`);
-    log(`Source directory "${srcDir}" created`);
-  }
-
-  if(testDir && !fs.existsSync(`${cwd}/${testDir}`)) {
-    log('Creating test directory...');
-    fs.mkdirSync(`${cwd}/${testDir}`);
-    log(`Test directory "${testDir}" created`);
-  }
-
-  log('Installing required dev dependencies... This might take a while...');
-  install([], devDependencies);
-  log('Dependencies installed');
-
-  log('Updating package.json...');
-  await writePackageJson({
-    linter: answers['linter'].toLowerCase(),
-    useMarkdownViewer: answers['markdown-viewer'] === 'yes',
-    sourceDirectory: srcDir,
-    testDirectory: testDir,
+  const destination = `${cwd}/README.md`;
+  const tpl = read.sync(`${path.resolve(__dirname, '..')}/templates/README.tpl`, {
+    encoding: 'utf8'
   });
-  log('package.json updated');
+  const output = replaceTemplateTags(tpl,
+    [
+      'project-name',
+      'description',
+      'license-badge',
+      'conventional-commits-badge',
+      'js-style-guide-badge'
+    ],
+    [
+      projectName,
+      opts.description,
+      badges['license-mit'],
+      badges['conventional-commits'],
+      badges['js-style-guide']
+    ]
+  );
+
+  write.sync(destination, output);
+}
+
+function replaceTemplateTags(source, tagNames, replacements) {
+  return tagNames.reduce((src, tagName, index) => {
+    return replaceTemplateTag(src, tagName, replacements[index]);
+  }, source);
+}
+
+function replaceTemplateTag(source, tagName, replacement) {
+  return source.replace(
+    new RegExp(`\\{\\s*${tagName}\\s*\\}`, 'gmi'), replacement
+  );
 }
