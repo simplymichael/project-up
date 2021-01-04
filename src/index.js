@@ -45,20 +45,18 @@ function initNpm() {
  * @param deps {string} optional, the dependencies
  * @param devDeps {string} optional, the dev dependencies
  */
-function install(deps, devDeps) { console.log('Installing dependencies');
+function install(deps, devDeps) {
   const processOpts = {
     //stdio: 'inherit',
     encoding : 'utf8'
   };
 
   if(Array.isArray(deps) && deps.length > 0) {
-    const result = cp.execSync(`npm i -S ${deps.join(' ')}`, processOpts);
-    console.log(result.stdout);
+    cp.execSync(`npm i -S ${deps.join(' ')}`, processOpts);
   }
 
   if(Array.isArray(devDeps) && devDeps.length > 0) {
-    const result2 = cp.execSync(`npm i -D ${devDeps.join(' ')}`, processOpts);
-    console.log(result2.stdout);
+    cp.execSync(`npm i -D ${devDeps.join(' ')}`, processOpts);
   }
 }
 
@@ -70,6 +68,7 @@ function install(deps, devDeps) { console.log('Installing dependencies');
  */
 async function writePackageJson(opts) {
   const { linter, useMarkdownViewer } = opts;
+  const packageJson = require(`${process.cwd()}/package.json`);
 
   let lintCommand;
 
@@ -79,7 +78,16 @@ async function writePackageJson(opts) {
     lintCommand = 'standard ./src';
   }
 
+  const config = {
+    commitizen: {
+      path: 'node_modules/cz-conventional-changelog'
+    },
+    ghooks: {
+      'pre-commit': 'npm run lint && npm run test:coverage'
+    }
+  };
   const scripts = {
+    ...packageJson.scripts,
     'pretest': 'npm run lint',
     'test': 'run-script-os',
     'test:nix': 'NODE_ENV=test mocha _tests/"{,/**/}*.test.js"',
@@ -101,18 +109,8 @@ async function writePackageJson(opts) {
     scripts['view-license'] = './node_modules/.bin/markdown-viewer -f LICENSE.md -b';
   }
 
-  await writePackage({
-    scripts,
-  });
+  packageJson.scripts = scripts;
+  packageJson.config = config;
 
-  await writePackage({
-    config: {
-      commitizen: {
-        path: 'node_modules/cz-conventional-changelog'
-      },
-      ghooks: {
-        'pre-commit': 'npm run lint && npm run test:coverage'
-      }
-    }
-  });
+  await writePackage(packageJson);
 }

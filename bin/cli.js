@@ -39,7 +39,7 @@ if (program.args.length > 0) {
 run(projectDir);
 
 async function run(path) {
-
+  const cwd = process.cwd();
   const answers = await ask([
     {
       type: 'input',
@@ -92,7 +92,7 @@ async function run(path) {
   // If the directory is not a git-directory, then initialize git
   if(answers['is-fresh'] === 'yes') {
 
-    if(!fs.existsSync(`${path}/.git`)) {
+    if(!fs.existsSync(`${cwd}/.git`)) {
       log('Initializing git...');
       gitInit({
         github: {
@@ -105,7 +105,7 @@ async function run(path) {
       log('The specified directory is a git repository... skipping "git init"');
     }
 
-    if(!fs.existsSync(`${path}/package.json`)) {
+    if(!fs.existsSync(`${cwd}/package.json`)) {
       log('Creating package.json...');
       npmInit({});
       log('package.json created');
@@ -121,6 +121,7 @@ async function run(path) {
   log('Updating package.json...');
   await writePackageJson({
     linter: answers['linter'].toLowerCase(),
+    useMarkdownViewer: answers['markdown-viewer'] === 'yes',
   });
   log('package.json updated');
 }
