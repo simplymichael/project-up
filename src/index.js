@@ -281,11 +281,19 @@ async function install(deps, devDeps) {
   };
 
   if(Array.isArray(deps) && deps.length > 0) {
-    cp.execSync(`npm i -S ${deps.join(' ')}`, processOpts);
+    //cp.execSync(`npm i -S ${deps.join(' ')}`, processOpts);
+
+    await Promise.all(deps.map(dep => {
+      return execShellCommand(`npm i -S ${dep}`, processOpts);
+    }));
   }
 
   if(Array.isArray(devDeps) && devDeps.length > 0) {
-    cp.execSync(`npm i -D ${devDeps.join(' ')}`, processOpts);
+    //cp.execSync(`npm i -D ${devDeps.join(' ')}`, processOpts);
+
+    await Promise.all(devDeps.map(dep => {
+      return execShellCommand(`npm i -D ${dep}`, processOpts);
+    }));
   }
 }
 
@@ -407,6 +415,27 @@ function generateLicense(license, options) {
 // credits: https://stackoverflow.com/a/28191966/1743192
 function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
+}
+
+/**
+ * Executes a shell command and return it as a Promise.
+ * @param cmd {string}
+ * @return {Promise<string>}
+ *
+ * @credits: https://ali-dev.medium.com/how-to-use-promise-with-exec-in-node-js-a39c4d7bbf77
+ */
+function execShellCommand(cmd, options) {
+  //const exec = require('child_process').exec;
+  return new Promise((resolve, reject) => {
+    cp.exec(cmd, options, (error, stdout, stderr) => {
+      if (error) {
+        console.warn(error);
+        reject(error);
+      }
+
+      resolve(stdout? stdout : stderr);
+    });
+  });
 }
 
 function replaceTemplateTags(source, tagNames, replacements) {
