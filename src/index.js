@@ -64,15 +64,19 @@ function install(deps, devDeps) {
  *   - useMarkdownViewer {boolean}
  */
 async function writePackageJson(opts) {
-  const { linter, useMarkdownViewer, testDirectory } = opts;
+  const { linter, useMarkdownViewer, testDirectory, sourceDirectory } = opts;
   const packageJson = require(`${process.cwd()}/package.json`);
 
   let lintCommand;
 
   if(linter === 'eslint') {
-    lintCommand = './node_modules/.bin/eslint ./src';
+    lintCommand = './node_modules/.bin/eslint';
   } else if(linter === 'standard') {
-    lintCommand = 'standard ./src';
+    lintCommand = 'standard';
+  }
+
+  if(sourceDirectory) {
+    lintCommand += ` ${sourceDirectory}`;
   }
 
   const config = {
@@ -86,21 +90,26 @@ async function writePackageJson(opts) {
   };
   const scripts = {
     ...packageJson.scripts,
-    'pretest': 'npm run lint',
-    'test': 'run-script-os',
-    'test:nix': `NODE_ENV=test mocha ${testDirectory}/"{,/**/}*.test.js"`,
-    'test:win32': `set NODE_ENV=test& mocha ${testDirectory}/"{,/**/}*.test.js"`,
-    'test:watch': 'npm test -- -w',
-    'test:coverage': 'nyc npm test',
     'commit': 'git-cz',
-    'lint': lintCommand,
-    'lint:fix': 'npm run lint -- --fix',
-    'prerelease': 'npm run test:coverage',
     'release': 'standard-version',
     'first-release': 'npm run release -- --first-release && git push origin --tags',
-    'release:dry-run': 'npm run release -- --dry-run',
-    'first-release:dry-run': 'npm run first-release -- --dry-run',
+    'release:dry-run': 'npm run release -- --dry-run'
   };
+
+  if(lintCommand.length > 0) {
+    scripts['pretest'] = 'npm run lint';
+    scripts['lint'] = lintCommand;
+    scripts['lint:fix'] = 'npm run lint -- --fix';
+  }
+
+  if(testDirectory) {
+    scripts['test'] = 'run-script-os';
+    scripts['test:nix'] = `NODE_ENV=test mocha ${testDirectory}/"{,/**/}*.test.js"`;
+    scripts['test:win32'] = `set NODE_ENV=test& mocha ${testDirectory}/"{,/**/}*.test.js"`;
+    scripts['test:watch'] = 'npm test -- -w';
+    scripts['test:coverage'] = 'nyc npm test';
+    scripts['prerelease'] = 'npm run test:coverage';
+  }
 
   if(useMarkdownViewer) {
     scripts['view-readme'] = './node_modules/.bin/markdown-viewer -b';
@@ -146,10 +155,38 @@ async function setup() {
       }
     },
     {
+      type: 'list',
+      name: 'create-src-directory',
+      message: 'Create source directory',
+      choices: ['yes', 'no', 'already have']
+    },
+    {
+      type: 'input',
+      name: 'src-directory',
+      message: 'Specify your source directory',
+      default: 'src',
+      when: function(answers) {
+        const createSrcDir = answers['create-src-directory'];
+
+        return createSrcDir === 'yes' || createSrcDir === 'already have';
+      }
+    },
+    {
+      type: 'list',
+      name: 'create-test-directory',
+      message: 'Create test directory',
+      choices: ['yes', 'no', 'already have']
+    },
+    {
       type: 'input',
       name: 'test-directory',
-      message: 'Specify your test directory: (will be created if it does not exist)',
-      default: '_tests'
+      message: 'Specify your test directory',
+      default: '_tests',
+      when: function(answers) {
+        const createTestDir = answers['create-test-directory'];
+
+        return createTestDir === 'yes' || createTestDir === 'already have';
+      }
     },
     {
       type: 'list',
@@ -165,6 +202,7 @@ async function setup() {
     }
   ];
   const answers = await ask(questions);
+  const srcDir = answers['src-directory'];
   const testDir = answers['test-directory'];
 
   devDependencies.push(answers['linter'].toLowerCase());
@@ -195,7 +233,13 @@ async function setup() {
     log('The specified directory is already contains a package.json file... skipping "npm init"');
   }
 
-  if(!fs.existsSync(`${cwd}/${testDir}`)) {
+  if(srcDir && !fs.existsSync(`${cwd}/${srcDir}`)) {
+    log('Creating source directory...');
+    fs.mkdirSync(`${cwd}/${srcDir}`);
+    log(`Source directory "${srcDir}" created`);
+  }
+
+  if(testDir && !fs.existsSync(`${cwd}/${testDir}`)) {
     log('Creating test directory...');
     fs.mkdirSync(`${cwd}/${testDir}`);
     log(`Test directory "${testDir}" created`);
@@ -209,6 +253,7 @@ async function setup() {
   await writePackageJson({
     linter: answers['linter'].toLowerCase(),
     useMarkdownViewer: answers['markdown-viewer'] === 'yes',
+    sourceDirectory: srcDir,
     testDirectory: testDir,
   });
   log('package.json updated');
