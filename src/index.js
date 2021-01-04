@@ -93,12 +93,6 @@ async function setup(projectName) {
       choices: ['ESLint', 'Standard']
     },
     {
-      type: 'list',
-      name: 'markdown-viewer',
-      message: 'Install markdown-viewer? (https://npmjs.com/package/markdown-viewer)',
-      choices: ['yes', 'no']
-    },
-    {
       type: 'input',
       name: 'dependencies',
       message: 'List any dependencies, separated by spaces: (dep@version dep2 dep3@version)'
@@ -140,10 +134,6 @@ async function setup(projectName) {
   }
 
   devDependencies.push(answers['linter'].toLowerCase());
-
-  if(answers['markdown-viewer'] === 'yes') {
-    devDependencies.push('markdown-viewer');
-  }
 
   // If the directory is not a git-directory, then initialize git
   if(!gitInitialized) {
@@ -192,7 +182,6 @@ async function setup(projectName) {
   log('Updating package.json...');
   await writePackageJson({
     linter: answers['linter'].toLowerCase(),
-    useMarkdownViewer: answers['markdown-viewer'] === 'yes',
     sourceDirectory: srcDir,
     testDirectory: testDir,
   });
@@ -257,10 +246,11 @@ function install(deps, devDeps) {
  * @param path {string} optional, path to the package.json file
  * @param opts {object} with members:
  *   - linter {string} eslint | markdown
- *   - useMarkdownViewer {boolean}
+ *   - sourceDirectory {string} source files directory
+ *   - testDirectory {string} directory holding test files
  */
 async function writePackageJson(opts) {
-  const { linter, useMarkdownViewer, testDirectory, sourceDirectory } = opts;
+  const { linter, testDirectory, sourceDirectory } = opts;
   const packageJson = require(`${process.cwd()}/package.json`);
 
   let lintCommand;
@@ -305,11 +295,6 @@ async function writePackageJson(opts) {
     scripts['test:watch'] = 'npm test -- -w';
     scripts['test:coverage'] = 'nyc npm test';
     scripts['prerelease'] = 'npm run test:coverage';
-  }
-
-  if(useMarkdownViewer) {
-    scripts['view-readme'] = './node_modules/.bin/markdown-viewer -b';
-    scripts['view-license'] = './node_modules/.bin/markdown-viewer -f LICENSE.md -b';
   }
 
   packageJson.scripts = scripts;
