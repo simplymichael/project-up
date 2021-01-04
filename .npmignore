@@ -6,3 +6,4 @@ _tests/
 .travis.yml
 .nyc_output/
 .markdown-viewer
+_test-directory
