@@ -1,14 +1,11 @@
+const fs = require('fs');
 const cp = require('child_process');
 const inquirer = require('inquirer');
 const writePackage = require('write-pkg');
 //const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 module.exports = {
-  ask,
-  gitInit: initGit,
-  npmInit: initNpm,
-  install,
-  writePackageJson
+  setup
 };
 
 
@@ -25,7 +22,7 @@ function ask(questions) {
     });
 }
 
-function initGit(opts) {
+function gitInit(opts) {
   const { github: { username, email } } = opts;
 
   cp.execSync(
@@ -36,7 +33,7 @@ function initGit(opts) {
   );
 }
 
-function initNpm() {
+function npmInit() {
   cp.execSync('npm init -y');
 }
 
@@ -67,18 +64,19 @@ function install(deps, devDeps) {
  *   - useMarkdownViewer {boolean}
  */
 async function writePackageJson(opts) {
-  const { linter, useMarkdownViewer } = opts;
+  const { linter, useMarkdownViewer, testDirectory } = opts;
   const packageJson = require(`${process.cwd()}/package.json`);
 
   let lintCommand;
 
-  if(linter === 'elsint') {
+  if(linter === 'eslint') {
     lintCommand = './node_modules/.bin/eslint ./src';
   } else if(linter === 'standard') {
     lintCommand = 'standard ./src';
   }
 
   const config = {
+    ...packageJson.config,
     commitizen: {
       path: 'node_modules/cz-conventional-changelog'
     },
@@ -90,8 +88,8 @@ async function writePackageJson(opts) {
     ...packageJson.scripts,
     'pretest': 'npm run lint',
     'test': 'run-script-os',
-    'test:nix': 'NODE_ENV=test mocha _tests/"{,/**/}*.test.js"',
-    'test:win32': 'set NODE_ENV=test& mocha _tests/"{,/**/}*.test.js"',
+    'test:nix': `NODE_ENV=test mocha ${testDirectory}/"{,/**/}*.test.js"`,
+    'test:win32': `set NODE_ENV=test& mocha ${testDirectory}/"{,/**/}*.test.js"`,
     'test:watch': 'npm test -- -w',
     'test:coverage': 'nyc npm test',
     'commit': 'git-cz',
@@ -113,4 +111,105 @@ async function writePackageJson(opts) {
   packageJson.config = config;
 
   await writePackage(packageJson);
+}
+
+async function setup() {
+  const cwd = process.cwd();
+  const log = console.log;
+  const gitInitialized = fs.existsSync(`${cwd}/.git`);
+  const npmInitialized = fs.existsSync(`${cwd}/package.json`);
+  const devDependencies = [
+    'chai',
+    'commitizen',
+    'cz-conventional-changelog',
+    'ghooks',
+    'mocha',
+    'nyc',
+    'run-script-os',
+    'standard-version'
+  ];
+  const questions = [
+    {
+      type: 'input',
+      name: 'gh-username',
+      message: 'Github username (git config user.name value)',
+      when: function() {
+        return !gitInitialized;
+      }
+    },
+    {
+      type: 'input',
+      name: 'gh-email',
+      message: 'Github email (git config user.email value)',
+      when: function() {
+        return !gitInitialized;
+      }
+    },
+    {
+      type: 'input',
+      name: 'test-directory',
+      message: 'Specify your test directory: (will be created if it does not exist)',
+      default: '_tests'
+    },
+    {
+      type: 'list',
+      name: 'linter',
+      message: 'Select a linter',
+      choices: ['ESLint', 'Standard']
+    },
+    {
+      type: 'list',
+      name: 'markdown-viewer',
+      message: 'Install markdown-viewer? (https://npmjs.com/package/markdown-viewer)',
+      choices: ['yes', 'no']
+    }
+  ];
+  const answers = await ask(questions);
+  const testDir = answers['test-directory'];
+
+  devDependencies.push(answers['linter'].toLowerCase());
+
+  if(answers['markdown-viewer'] === 'yes') {
+    devDependencies.push('markdown-viewer');
+  }
+
+  // If the directory is not a git-directory, then initialize git
+  if(!gitInitialized) {
+    log('Initializing git...');
+    gitInit({
+      github: {
+        username: answers['gh-username'],
+        email: answers['gh-email']
+      },
+    });
+    console.log('Initialized empty git repository');
+  } else {
+    log('The specified directory is a git repository... skipping "git init"');
+  }
+
+  if(!npmInitialized) {
+    log('Creating package.json...');
+    npmInit();
+    log('package.json created');
+  } else {
+    log('The specified directory is already contains a package.json file... skipping "npm init"');
+  }
+
+  if(!fs.existsSync(`${cwd}/${testDir}`)) {
+    log('Creating test directory...');
+    fs.mkdirSync(`${cwd}/${testDir}`);
+    log(`Test directory "${testDir}" created`);
+  }
+
+  log('Installing required dev dependencies... This might take a while...');
+  install([], devDependencies);
+  log('Dependencies installed');
+
+  log('Updating package.json...');
+  await writePackageJson({
+    linter: answers['linter'].toLowerCase(),
+    useMarkdownViewer: answers['markdown-viewer'] === 'yes',
+    testDirectory: testDir,
+  });
+  log('package.json updated');
 }
