@@ -38,5 +38,7 @@ if (program.args.length > 0) {
 }
 
 (async function() {
-  await setup(projectName);
+  await setup(projectName, {
+    directory: projectDir,
+  });
 })();

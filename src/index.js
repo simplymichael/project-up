@@ -8,14 +8,17 @@ const inquirer = require('inquirer');
 const writePackage = require('write-pkg');
 const badges = require('../badges');
 const log = console.log;
-//const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 module.exports = {
   setup
 };
 
 
-async function setup(projectName) {
+/**
+ * @param opts {object} with members:
+ *   - directory {string} the project directory name
+ */
+async function setup(projectName, opts) {
   const cwd = process.cwd();
   const gitInitialized = fs.existsSync(`${cwd}/.git`);
   const npmInitialized = fs.existsSync(`${cwd}/package.json`);
@@ -38,16 +41,21 @@ async function setup(projectName) {
     },
     {
       type: 'input',
-      name: 'gh-username',
-      message: 'Github username (git config user.name value)',
+      name: 'name',
+      message: 'Your name (git config user.name value)',
       when: function() {
         return !gitInitialized;
       }
     },
     {
       type: 'input',
+      name: 'gh-username',
+      message: 'Github username',
+    },
+    {
+      type: 'input',
       name: 'gh-email',
-      message: 'Github email (git config user.email value)',
+      message: 'Github email',
       when: function() {
         return !gitInitialized;
       }
@@ -140,7 +148,7 @@ async function setup(projectName) {
     log('Initializing git...');
     gitInit({
       github: {
-        username: answers['gh-username'],
+        username: answers['name'],
         email: answers['gh-email']
       },
     });
@@ -190,6 +198,10 @@ async function setup(projectName) {
   log('Creating README file...');
   await writeReadMe(projectName, {
     description: answers['description'],
+    github: {
+      username: answers['gh-username'],
+      projectPath: opts.directory,
+    },
   });
   log('README file created');
 }
@@ -320,7 +332,9 @@ function writeReadMe(projectName, opts) {
     [
       projectName,
       opts.description,
-      badges['license-mit'],
+      badges['license-mit']
+        .replace(/\{gh-username\}/g, opts.github.username)
+        .replace(/\{project-name\}/g, opts.github.projectPath),
       badges['conventional-commits'],
       badges['js-style-guide']
     ]
