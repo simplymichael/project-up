@@ -7,6 +7,9 @@ const read = require('read-file');
 const inquirer = require('inquirer');
 const writePackage = require('write-pkg');
 const badges = require('../badges');
+const licenses = require('../licenses');
+const currentYear = new Date().getFullYear();
+const rootDir = path.resolve(__dirname, '..');
 const log = console.log;
 
 module.exports = {
@@ -37,12 +40,12 @@ async function setup(projectName, opts) {
     {
       type: 'input',
       name: 'description',
-      message: 'Project description',
+      message: 'Project description:',
     },
     {
       type: 'input',
       name: 'name',
-      message: 'Your name (git config user.name value)',
+      message: 'Your name (git config user.name value):',
       when: function() {
         return !gitInitialized;
       }
@@ -50,26 +53,53 @@ async function setup(projectName, opts) {
     {
       type: 'input',
       name: 'gh-username',
-      message: 'Github username',
+      message: 'Github username:',
     },
     {
       type: 'input',
       name: 'gh-email',
-      message: 'Github email',
+      message: 'Github email:',
       when: function() {
         return !gitInitialized;
       }
     },
     {
       type: 'list',
+      name: 'license',
+      message: 'License:',
+      choices: ['No License'].concat(Object.values(licenses)),
+      default: licenses['mit']
+    },
+    {
+      type: 'input',
+      name: 'license-owner',
+      message: 'License Owner/Organization name:',
+      default: function(answers) {
+        return answers['name'];
+      },
+      when: function(answers) {
+        return answers['license'].toLowerCase() !== 'none';
+      }
+    },
+    {
+      type: 'input',
+      name: 'license-year',
+      message: 'License Year:',
+      default: currentYear,
+      when: function(answers) {
+        return answers['license'].toLowerCase() !== 'none';
+      }
+    },
+    {
+      type: 'list',
       name: 'create-src-directory',
-      message: 'Create source directory',
+      message: 'Create source directory:',
       choices: ['yes', 'no', 'already have']
     },
     {
       type: 'input',
       name: 'src-directory',
-      message: 'Specify your source directory',
+      message: 'Specify your source directory:',
       default: 'src',
       when: function(answers) {
         const createSrcDir = answers['create-src-directory'];
@@ -80,13 +110,13 @@ async function setup(projectName, opts) {
     {
       type: 'list',
       name: 'create-test-directory',
-      message: 'Create test directory',
+      message: 'Create test directory:',
       choices: ['yes', 'no', 'already have']
     },
     {
       type: 'input',
       name: 'test-directory',
-      message: 'Specify your test directory',
+      message: 'Specify your test directory:',
       default: '_tests',
       when: function(answers) {
         const createTestDir = answers['create-test-directory'];
@@ -97,18 +127,18 @@ async function setup(projectName, opts) {
     {
       type: 'list',
       name: 'linter',
-      message: 'Select a linter',
-      choices: ['ESLint', 'Standard']
+      message: 'Linter:',
+      choices: ['ESLint', 'Standard', 'None']
     },
     {
       type: 'input',
       name: 'dependencies',
-      message: 'List any dependencies, separated by spaces: (dep@version dep2 dep3@version)'
+      message: 'Dependencies, separated by spaces or commas: (dep@version dep2 dep3@version):'
     },
     {
       type: 'input',
       name: 'dev-dependencies',
-      message: 'List any dev dependencies, separated by spaces: (dep@version dep2 dep3@version)'
+      message: 'Dev dependencies, separated by spaces or commas: (dep@version dep2 dep3@version):'
     },
     {
       type: 'input',
@@ -116,7 +146,7 @@ async function setup(projectName, opts) {
       message: function(answers) {
         log(util.inspect(answers));
 
-        return 'These are your settings is this ok? [Y/n]';
+        return 'These are your settings is this ok? [Y/n]:';
       }
     }
   ];
@@ -162,7 +192,7 @@ async function setup(projectName, opts) {
     npmInit();
     log('package.json created');
   } else {
-    log('The specified directory is already contains a package.json file... skipping "npm init"');
+    log('The specified directory already contains a package.json file... skipping "npm init"');
   }
 
   if(srcDir && !fs.existsSync(`${cwd}/${srcDir}`)) {
@@ -177,18 +207,14 @@ async function setup(projectName, opts) {
     log(`Test directory "${testDir}" created`);
   }
 
-  if(dependencies.length > 0) {
-    log('Installing dependencies... This might take a while...');
-    install(dependencies);
-    log('Dependencies installed');
-  }
-
-  log('Installing dev dependencies... This might take a while...');
-  install([], devDependencies);
-  log('Dev dependencies installed');
+  log('Installing dependencies... This might take a while...');
+  await install(dependencies, devDependencies);
+  log('Dependencies installed');
 
   log('Updating package.json...');
   await writePackageJson({
+    description: answers['description'],
+    license: getKeyByValue(licenses, answers['license']).toUpperCase(),
     linter: answers['linter'].toLowerCase(),
     sourceDirectory: srcDir,
     testDirectory: testDir,
@@ -204,6 +230,15 @@ async function setup(projectName, opts) {
     },
   });
   log('README file created');
+
+  if(answers['license'].toLowerCase() !== 'none') {
+    log(`Generating ${answers['license']} license...`);
+    generateLicense(answers['license'], {
+      owner: answers['license-owner'],
+      year: answers['license-year']
+    });
+    log('License generated');
+  }
 }
 
 function ask(questions) {
@@ -239,7 +274,7 @@ function npmInit() {
  * @param deps {string} optional, the dependencies
  * @param devDeps {string} optional, the dev dependencies
  */
-function install(deps, devDeps) {
+async function install(deps, devDeps) {
   const processOpts = {
     //stdio: 'inherit',
     encoding : 'utf8'
@@ -262,9 +297,14 @@ function install(deps, devDeps) {
  *   - testDirectory {string} directory holding test files
  */
 async function writePackageJson(opts) {
-  const { linter, testDirectory, sourceDirectory } = opts;
+  const {
+    description,
+    license,
+    linter,
+    testDirectory,
+    sourceDirectory
+  } = opts;
   const packageJson = require(`${process.cwd()}/package.json`);
-
   let lintCommand;
 
   if(linter === 'eslint') {
@@ -309,6 +349,14 @@ async function writePackageJson(opts) {
     scripts['prerelease'] = 'npm run test:coverage';
   }
 
+  if(description && packageJson.description.trim().length === 0) {
+    packageJson.description = description;
+  }
+
+  if(license && packageJson.license.trim().length === 0) {
+    packageJson.license = license;
+  }
+
   packageJson.scripts = scripts;
   packageJson.config = config;
 
@@ -318,7 +366,7 @@ async function writePackageJson(opts) {
 function writeReadMe(projectName, opts) {
   const cwd = process.cwd();
   const destination = `${cwd}/README.md`;
-  const tpl = read.sync(`${path.resolve(__dirname, '..')}/templates/README.tpl`, {
+  const tpl = read.sync(`${rootDir}${path.sep}templates${path.sep}README.tpl`, {
     encoding: 'utf8'
   });
   const output = replaceTemplateTags(tpl,
@@ -341,6 +389,24 @@ function writeReadMe(projectName, opts) {
   );
 
   write.sync(destination, output);
+}
+
+function generateLicense(license, options) {
+  const year = options.year || currentYear;
+  const owner = options.owner;
+  const licenseKey = getKeyByValue(licenses, license);
+
+  const cwd = process.cwd();
+  const liceBin = `${rootDir}${path.sep}node_modules${path.sep}.bin${path.sep}lice`;
+
+  cp.execSync(`${liceBin} -g -l ${licenseKey} -n "${cwd}${path.sep}LICENSE.md" -u "${owner}" -y "${year}"`, {
+    encoding : 'utf8'
+  });
+}
+
+// credits: https://stackoverflow.com/a/28191966/1743192
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
 }
 
 function replaceTemplateTags(source, tagNames, replacements) {

@@ -29,9 +29,7 @@ if (program.args.length > 0) {
   //program.outputHelp();
 
   if(!fs.existsSync(projectDir)) {
-    log(`Creating ${projectDir}...`);
     fs.mkdirSync(projectDir);
-    log(`${projectDir} created`);
   }
 
   process.chdir(projectDir);
