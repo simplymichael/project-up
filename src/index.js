@@ -22,10 +22,7 @@ module.exports = {
  *   - directory {string} the project directory name
  */
 async function setup(projectName, opts) {
-  const { directory: projectDir } = opts;
-  const cwd = process.cwd();
-  const gitInitialized = fs.existsSync(`${cwd}/.git`);
-  const npmInitialized = fs.existsSync(`${cwd}/package.json`);
+  let ownerName;
   let dependencies = [];
   let devDependencies = [
     'chai',
@@ -37,6 +34,19 @@ async function setup(projectName, opts) {
     'run-script-os',
     'standard-version'
   ];
+  const { directory: projectDir } = opts;
+  const cwd = process.cwd();
+  const gitInitialized = fs.existsSync(`${cwd}/.git`);
+  const npmInitialized = fs.existsSync(`${cwd}/package.json`);
+
+  if(gitInitialized) {
+    ownerName = await(execShellCommand('git config user.name'));
+
+    if(typeof ownerName === 'string') {
+      ownerName = ownerName.trim();
+    }
+  }
+
   const questions = [
     {
       type: 'input',
@@ -76,7 +86,7 @@ async function setup(projectName, opts) {
       name: 'license-owner',
       message: 'License Owner/Organization name:',
       default: function(answers) {
-        return answers['name'];
+        return gitInitialized ? ownerName : answers['name'];
       },
       when: function(answers) {
         return answers['license'].toLowerCase() !== 'none';
@@ -156,7 +166,7 @@ async function setup(projectName, opts) {
             'name': answers['license'],
           },
           'Linter': answers['linter'],
-          'Dependencies:': answers['dependencies'],
+          'Dependencies': answers['dependencies'],
           'Dev dependencies': answers['dev-dependencies']
         };
 
@@ -287,7 +297,7 @@ function gitInit(opts) {
   const { github: { username, email } } = opts;
 
   cp.execSync(
-    `git init && git config user.name ${username} && git config user.email ${email}`,
+    `git init && git config user.name "${username}" && git config user.email ${email}`,
     {
       //stdio: 'inherit'
     }

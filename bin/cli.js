@@ -26,8 +26,6 @@ if (program.args.length > 0) {
     );
   }
 
-  //program.outputHelp();
-
   if(!fs.existsSync(projectDir)) {
     fs.mkdirSync(projectDir);
   }
