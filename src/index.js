@@ -336,6 +336,8 @@ function ask(questions) {
 function gitInit(opts) {
   const { github: { username, email } } = opts;
 
+  writeIgnoreFiles();
+
   cp.execSync(
     `git init && git config user.name "${username}" && git config user.email ${email}`,
     {
@@ -459,6 +461,17 @@ async function writePackageJson(opts) {
   packageJson.config = config;
 
   await writePackage(packageJson);
+}
+
+function writeIgnoreFiles() {
+  const cwd = process.cwd();
+  const destination = `${cwd}/.gitignore`;
+  const tpl = read.sync(`${rootDir}${path.sep}templates${path.sep}.gitignore.tpl`, {
+    encoding: 'utf8'
+  });
+  const output = tpl;
+
+  write.sync(destination, output);
 }
 
 function writeReadMe(projectName, opts) {
