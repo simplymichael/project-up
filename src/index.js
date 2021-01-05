@@ -35,6 +35,7 @@ async function setup(projectName, opts) {
     'run-script-os',
     'standard-version'
   ];
+  const splitRegex = /\s+,?\s+/;
   const { directory: projectDir } = opts;
   const cwd = process.cwd();
   const gitInitialized = fs.existsSync(`${cwd}/.git`);
@@ -176,13 +177,17 @@ async function setup(projectName, opts) {
             name: answers['license'],
           },
           Linter: answers['linter'],
-          Dependencies: answers['dependencies'],
-          'Dev dependencies': answers['dev-dependencies']
+          'Dev dependencies': devDependencies.concat(
+            answers['dev-dependencies'].split(splitRegex))
         };
 
+        if(answers['dependencies']) {
+          settings['Dependencies'] = answers['dependencies'].split(splitRegex);
+        }
+
         if(answers['license'].toLowerCase() !== 'none') {
-          settings['License']['Owner'] = answers['license-owner'];
-          settings['License']['Year'] = answers['license-year'];
+          settings['License']['owner'] = answers['license-owner'];
+          settings['License']['year'] = answers['license-year'];
         }
 
         if(answers['src-directory']) {
@@ -202,7 +207,6 @@ async function setup(projectName, opts) {
   const answers = await ask(questions);
   const srcDir = answers['src-directory'];
   const testDir = answers['test-directory'];
-  const splitRegex = /\s+,?\s+/;
 
   if(answers['proceed'].toLowerCase() === 'n') {
     process.exit('0');
@@ -290,8 +294,13 @@ async function setup(projectName, opts) {
   }
 
   if(answers['linter'].toLowerCase() === 'eslint') {
-    log('Please take some time to setup ESLint');
-    `${cwd}${path.sep}node_modules${path.sep}.bin${path.sep}eslint --init`;
+    log('Please take a moment to setup ESLint');
+    const cmd = `${cwd}${path.sep}node_modules${path.sep}.bin${path.sep}eslint --init`;
+
+    cp.execSync(cmd, {
+      stdio: 'inherit',
+      encoding : 'utf8'
+    });
   }
 
   log('You are all set');
