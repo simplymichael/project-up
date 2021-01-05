@@ -26,6 +26,9 @@ if (program.args.length > 0) {
     );
   }
 
+  projectName = projectName.trim();
+  projectDir = projectDir.trim();
+
   if(!fs.existsSync(projectDir)) {
     fs.mkdirSync(projectDir);
   }

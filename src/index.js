@@ -23,6 +23,7 @@ module.exports = {
  */
 async function setup(projectName, opts) {
   let ownerName;
+  let ownerEmail;
   let dependencies = [];
   let devDependencies = [
     'chai',
@@ -41,9 +42,14 @@ async function setup(projectName, opts) {
 
   if(gitInitialized) {
     ownerName = await(execShellCommand('git config user.name'));
+    ownerEmail = await(execShellCommand('git config user.email'));
 
     if(typeof ownerName === 'string') {
       ownerName = ownerName.trim();
+    }
+
+    if(typeof ownerEmail === 'string') {
+      ownerEmail = ownerEmail.trim();
     }
   }
 
@@ -156,17 +162,21 @@ async function setup(projectName, opts) {
       name: 'proceed',
       message: function(answers) {
         const settings = {
-          'Project name': projectName,
-          'Project directory': projectDir,
-          'Description': answers['description'],
-          'Project owner': answers['name'],
-          'GitHub username': answers['gh-username'],
-          'GitHub email': answers['gh-email'],
-          'License': {
-            'name': answers['license'],
+          Project: {
+            name: projectName,
+            directory: projectDir,
+            description: answers['description'],
+            owner: answers['name'] || ownerName
           },
-          'Linter': answers['linter'],
-          'Dependencies': answers['dependencies'],
+          GitHub: {
+            username: answers['gh-username'],
+            email: answers['gh-email'] || ownerEmail,
+          },
+          License: {
+            name: answers['license'],
+          },
+          Linter: answers['linter'],
+          Dependencies: answers['dependencies'],
           'Dev dependencies': answers['dev-dependencies']
         };
 
@@ -278,6 +288,22 @@ async function setup(projectName, opts) {
     });
     log('License generated');
   }
+
+  if(answers['linter'].toLowerCase() === 'eslint') {
+    log('Please take some time to setup ESLint');
+    `${cwd}${path.sep}node_modules${path.sep}.bin${path.sep}eslint --init`;
+  }
+
+  log('You are all set');
+  log(`
+    To run your tests, run "npm test"
+    To run tests with coverage reporting, run "npm run test:coverage"
+    To commit your changes, run "npm run commit"
+    To fix linting errors, run "npm run lint"
+    To run your first release, run "npm run first-release"
+    To run subsequent releases, run "npm run release"
+    To run release dry-run, run "npm run release:dry-run"
+  `);
 }
 
 function ask(questions) {
