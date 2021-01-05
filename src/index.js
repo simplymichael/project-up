@@ -294,9 +294,9 @@ async function setup(projectName, opts) {
     log('License generated');
   }
 
-  const esLintExists = !fs.existsSync(`${cwd}/eslintrc.js`)
-    && !fs.existsSync(`${cwd}/eslintrc.json`)
-    && !fs.existsSync(`${cwd}/eslintrc.yml`);
+  const esLintExists = fs.existsSync(`${cwd}/eslintrc.js`)
+    || fs.existsSync(`${cwd}/eslintrc.json`)
+    || fs.existsSync(`${cwd}/eslintrc.yml`);
 
   if((answers['linter'].toLowerCase() === 'eslint') && !esLintExists) {
     log('Please take a moment to setup ESLint');
@@ -336,7 +336,9 @@ function ask(questions) {
 function gitInit(opts) {
   const { github: { username, email } } = opts;
 
+  log('Creating .gitignore file...');
   writeIgnoreFiles();
+  log('.gitignore file created');
 
   cp.execSync(
     `git init && git config user.name "${username}" && git config user.email ${email}`,
