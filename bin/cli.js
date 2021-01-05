@@ -18,23 +18,23 @@ program.parse(process.argv);
 if (program.args.length > 0) {
   projectName = program.args[0];
   projectDir = projectName.replace(/\s+/g, '-').toLowerCase();
-
-  if(projectName.toLowerCase() === projectDir) {
-    projectName = projectName.replace(
-      /[-, _](\w)/g,
-      (g, c) => ' ' + c.toUpperCase()
-    );
-  }
-
-  projectName = projectName.trim();
-  projectDir = projectDir.trim();
-
-  if(!fs.existsSync(projectDir)) {
-    fs.mkdirSync(projectDir);
-  }
-
-  process.chdir(projectDir);
 }
+
+if(projectName.toLowerCase() === projectDir) {
+  projectName = projectName.replace(
+    /[-, _](\w)/g,
+    (g, c) => ' ' + c.toUpperCase()
+  );
+}
+
+projectName = projectName.trim();
+projectDir = projectDir.trim();
+
+if(!fs.existsSync(projectDir)) {
+  fs.mkdirSync(projectDir);
+}
+
+process.chdir(projectDir);
 
 (async function() {
   await setup(projectName, {

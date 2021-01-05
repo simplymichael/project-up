@@ -178,6 +178,7 @@ async function setup(projectName, opts) {
           },
           Linter: answers['linter'],
           'Dev dependencies': devDependencies.concat(
+            [answers['linter'].toLowerCase()]).concat(
             answers['dev-dependencies'].split(splitRegex))
         };
 
@@ -293,7 +294,11 @@ async function setup(projectName, opts) {
     log('License generated');
   }
 
-  if(answers['linter'].toLowerCase() === 'eslint') {
+  const esLintExists = !fs.existsSync(`${cwd}/eslintrc.js`)
+    && !fs.existsSync(`${cwd}/eslintrc.json`)
+    && !fs.existsSync(`${cwd}/eslintrc.yml`);
+
+  if((answers['linter'].toLowerCase() === 'eslint') && !esLintExists) {
     log('Please take a moment to setup ESLint');
     const cmd = `${cwd}${path.sep}node_modules${path.sep}.bin${path.sep}eslint --init`;
 
@@ -308,7 +313,7 @@ async function setup(projectName, opts) {
     To run your tests, run "npm test"
     To run tests with coverage reporting, run "npm run test:coverage"
     To commit your changes, run "npm run commit"
-    To fix linting errors, run "npm run lint"
+    To fix linting errors, run "npm run lint:fix"
     To run your first release, run "npm run first-release"
     To run subsequent releases, run "npm run release"
     To run release dry-run, run "npm run release:dry-run"
@@ -350,9 +355,20 @@ function npmInit() {
  */
 async function install(deps, devDeps) {
   const processOpts = {
-    //stdio: 'inherit',
-    encoding : 'utf8'
+    encoding: 'utf-8',
+    // stdio: 'inherit'
   };
+  const packageJson = require(`${process.cwd()}/package.json`);
+  const installedDeps = packageJson.dependencies;
+  const installedDevDeps = packageJson.devDependencies;
+
+  if(installedDeps) {
+    deps = deps.filter(dep => !Object.keys(installedDeps).includes(dep));
+  }
+
+  if(installedDevDeps) {
+    devDeps = devDeps.filter(dep => !Object.keys(installedDevDeps).includes(dep));
+  }
 
   if(Array.isArray(deps) && deps.length > 0) {
     //cp.execSync(`npm i -S ${deps.join(' ')}`, processOpts);
