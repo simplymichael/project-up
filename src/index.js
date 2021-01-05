@@ -6,10 +6,12 @@ const write = require('write');
 const read = require('read-file');
 const inquirer = require('inquirer');
 const writePackage = require('write-pkg');
+const requireUncached = require('require-without-cache');
 const badges = require('../badges');
 const licenses = require('../licenses');
 const currentYear = new Date().getFullYear();
 const rootDir = path.resolve(__dirname, '..');
+const SEP = path.sep;
 const log = console.log;
 
 module.exports = {
@@ -249,21 +251,19 @@ async function setup(projectName, opts) {
     log('The specified directory already contains a package.json file... skipping "npm init"');
   }
 
-  if(srcDir && !fs.existsSync(`${cwd}/${srcDir}`)) {
-    log('Creating source directory...');
-    fs.mkdirSync(`${cwd}/${srcDir}`);
-    log(`Source directory "${srcDir}" created`);
+  if(srcDir && !fs.existsSync(`${cwd}${SEP}${srcDir}`)) {
+    log(`Creating source directory ${srcDir}...`);
+    fs.mkdirSync(`${cwd}${SEP}${srcDir}`);
+    log('Source directory created');
   }
 
-  if(testDir && !fs.existsSync(`${cwd}/${testDir}`)) {
-    log('Creating test directory...');
-    fs.mkdirSync(`${cwd}/${testDir}`);
-    log(`Test directory "${testDir}" created`);
+  if(testDir && !fs.existsSync(`${cwd}${SEP}${testDir}`)) {
+    log(`Creating test directory ${testDir}...`);
+    fs.mkdirSync(`${cwd}${SEP}${testDir}`);
+    log('Test directory created');
   }
 
-  log('Installing dependencies... This might take a while...');
   await install(dependencies, devDependencies);
-  log('Dependencies installed');
 
   log('Updating package.json...');
   await writePackageJson({
@@ -300,7 +300,7 @@ async function setup(projectName, opts) {
 
   if((answers['linter'].toLowerCase() === 'eslint') && !esLintExists) {
     log('Please take a moment to setup ESLint');
-    const cmd = `${cwd}${path.sep}node_modules${path.sep}.bin${path.sep}eslint --init`;
+    const cmd = `${cwd}${SEP}node_modules${SEP}.bin${SEP}eslint --init`;
 
     cp.execSync(cmd, {
       stdio: 'inherit',
@@ -336,9 +336,7 @@ function ask(questions) {
 function gitInit(opts) {
   const { github: { username, email } } = opts;
 
-  log('Creating .gitignore file...');
   writeIgnoreFiles();
-  log('.gitignore file created');
 
   cp.execSync(
     `git init && git config user.name "${username}" && git config user.email ${email}`,
@@ -360,9 +358,9 @@ function npmInit() {
 async function install(deps, devDeps) {
   const processOpts = {
     encoding: 'utf-8',
-    // stdio: 'inherit'
+    //stdio: 'inherit'
   };
-  const packageJson = require(`${process.cwd()}/package.json`);
+  const packageJson = requireWithoutCache(`${process.cwd()}${SEP}package.json`);
   const installedDeps = packageJson.dependencies;
   const installedDevDeps = packageJson.devDependencies;
 
@@ -377,17 +375,37 @@ async function install(deps, devDeps) {
   if(Array.isArray(deps) && deps.length > 0) {
     //cp.execSync(`npm i -S ${deps.join(' ')}`, processOpts);
 
-    await Promise.all(deps.map(dep => {
-      return execShellCommand(`npm i -S ${dep}`, processOpts);
-    }));
+    /*deps.forEach(async dep => {
+      await execShellCommand(`npm i -S ${dep}`, processOpts);
+    }); */
+
+    log('Installing dependencies... This might take a while...');
+    for(let i = 0; i < deps.length; i++) {
+      const dep = deps[i];
+      log(`installing ${dep}`);
+      cp.execSync(`npm i -S ${dep}`, processOpts);
+      log(`${dep} installed`);
+    }
+    log('Dependencies installed');
   }
 
   if(Array.isArray(devDeps) && devDeps.length > 0) {
     //cp.execSync(`npm i -D ${devDeps.join(' ')}`, processOpts);
 
-    await Promise.all(devDeps.map(dep => {
-      return execShellCommand(`npm i -D ${dep}`, processOpts);
-    }));
+    /*devDeps.forEach(async dep => {
+      await execShellCommand(`npm i -D ${dep}`, processOpts);
+    });*/
+
+    log('Installing dev dependencies... This might take a while...');
+    for(let i = 0; i < devDeps.length; i++) {
+      const dep = devDeps[i];
+      log(`installing ${dep}`);
+      cp.execSync(`npm i -D ${dep}`, processOpts);
+      log(`${dep} installed`);
+    }
+    log('Dev dependencies installed');
+
+    return true;
   }
 }
 
@@ -406,7 +424,7 @@ async function writePackageJson(opts) {
     testDirectory,
     sourceDirectory
   } = opts;
-  const packageJson = require(`${process.cwd()}/package.json`);
+  const packageJson = requireWithoutCache(`${process.cwd()}${SEP}package.json`);
   let lintCommand;
 
   if(linter === 'eslint') {
@@ -468,18 +486,20 @@ async function writePackageJson(opts) {
 function writeIgnoreFiles() {
   const cwd = process.cwd();
   const destination = `${cwd}/.gitignore`;
-  const tpl = read.sync(`${rootDir}${path.sep}templates${path.sep}.gitignore.tpl`, {
+  const tpl = read.sync(`${rootDir}${SEP}templates${SEP}.gitignore.tpl`, {
     encoding: 'utf8'
   });
   const output = tpl;
 
+  log('Creting .gitignore file...');
   write.sync(destination, output);
+  log('.gitignore file created');
 }
 
 function writeReadMe(projectName, opts) {
   const cwd = process.cwd();
   const destination = `${cwd}/README.md`;
-  const tpl = read.sync(`${rootDir}${path.sep}templates${path.sep}README.tpl`, {
+  const tpl = read.sync(`${rootDir}${SEP}templates${SEP}README.tpl`, {
     encoding: 'utf8'
   });
   const output = replaceTemplateTags(tpl,
@@ -510,9 +530,9 @@ function generateLicense(license, options) {
   const licenseKey = getKeyByValue(licenses, license);
 
   const cwd = process.cwd();
-  const liceBin = `${rootDir}${path.sep}node_modules${path.sep}.bin${path.sep}lice`;
+  const liceBin = `${rootDir}${SEP}node_modules${SEP}.bin${SEP}lice`;
 
-  cp.execSync(`${liceBin} -g -l ${licenseKey} -n "${cwd}${path.sep}LICENSE.md" -u "${owner}" -y "${year}"`, {
+  cp.execSync(`${liceBin} -g -l ${licenseKey} -n "${cwd}${SEP}LICENSE.md" -u "${owner}" -y "${year}"`, {
     encoding : 'utf8'
   });
 }
@@ -553,4 +573,8 @@ function replaceTemplateTag(source, tagName, replacement) {
   return source.replace(
     new RegExp(`\\{\\s*${tagName}\\s*\\}`, 'gmi'), replacement
   );
+}
+
+function requireWithoutCache(module) {
+  return requireUncached(module, require);
 }

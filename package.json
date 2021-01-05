@@ -55,6 +55,7 @@
     "inquirer": "7.3.3",
     "lice": "1.1.0",
     "read-file": "0.2.0",
+    "require-without-cache": "0.0.6",
     "write": "2.0.0",
     "write-pkg": "4.0.0"
   }
