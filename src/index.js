@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const util = require('util');
 const cp = require('child_process');
+const kleur = require('kleur');
 const write = require('write');
 const read = require('read-file');
 const inquirer = require('inquirer');
@@ -13,7 +14,13 @@ const licenses = require('../licenses');
 const currentYear = new Date().getFullYear();
 const rootDir = path.resolve(__dirname, '..');
 const SEP = path.sep;
-const log = console.log;
+const log = {
+  error: (msg) => coloredMsg(msg, 'red'),
+  info: (msg) => coloredMsg(msg, 'cyan'),
+  normal: (msg) => coloredMsg(msg),
+  success: (msg) => coloredMsg(msg, 'green'),
+  warning: (msg) => coloredMsg(msg, 'yellow'),
+};
 
 let cwd;
 
@@ -249,8 +256,8 @@ async function setup(projectName, opts) {
           settings['test']['directory'] = answers['test-directory'];
         }
 
-        log('Please review your selection: ');
-        log(util.inspect(settings));
+        log.info('Please review your selection: ');
+        log.normal(util.inspect(settings));
 
         return 'Proceed? [Y/n]:';
       }
@@ -295,41 +302,41 @@ async function setup(projectName, opts) {
 
   // If the directory is not a git-directory, then initialize git
   if(!gitInitialized) {
-    log('Initializing git...');
+    log.info('Initializing git...');
     gitInit({
       github: {
         username: answers['name'],
         email: answers['gh-email']
       },
     });
-    log('Initialized empty git repository');
+    log.success('Initialized empty git repository');
   } else {
-    log('The specified directory is a git repository... skipping "git init"');
+    log.info('The specified directory is a git repository... skipping "git init"');
   }
 
   if(!npmInitialized) {
-    log('Creating package.json...');
+    log.info('Creating package.json...');
     npmInit();
-    log('package.json created');
+    log.success('package.json created');
   } else {
-    log('The specified directory already contains a package.json file... skipping "npm init"');
+    log.info('The specified directory already contains a package.json file... skipping "npm init"');
   }
 
   if(srcDir && !fs.existsSync(`${cwd}${SEP}${srcDir}`)) {
-    log(`Creating source directory ${srcDir}...`);
+    log.info(`Creating source directory ${srcDir}...`);
     fs.mkdirSync(`${cwd}${SEP}${srcDir}`);
-    log('Source directory created');
+    log.success('Source directory created');
   }
 
   if(testDir && !fs.existsSync(`${cwd}${SEP}${testDir}`)) {
-    log(`Creating test directory ${testDir}...`);
+    log.info(`Creating test directory ${testDir}...`);
     fs.mkdirSync(`${cwd}${SEP}${testDir}`);
-    log('Test directory created');
+    log.success('Test directory created');
   }
 
   await install(dependencies, devDependencies);
 
-  log('Updating package.json...');
+  log.info('Updating package.json...');
   await writePackageJson({
     description: answers['description'],
     license: getKeyByValue(licenses, answers['license']).toUpperCase(),
@@ -339,9 +346,9 @@ async function setup(projectName, opts) {
     sourceDirectory: srcDir,
     testDirectory: testDir,
   });
-  log('package.json updated');
+  log.success('package.json updated');
 
-  log('Creating README file...');
+  log.info('Creating README file...');
   await writeReadMe(projectName, {
     description: answers['description'],
     github: {
@@ -349,15 +356,15 @@ async function setup(projectName, opts) {
       projectPath: opts.directory,
     },
   });
-  log('README file created');
+  log.success('README file created');
 
   if(answers['license'].toLowerCase() !== 'none') {
-    log(`Generating ${answers['license']} license...`);
+    log.info(`Generating ${answers['license']} license...`);
     generateLicense(answers['license'], {
       owner: answers['license-owner'],
       year: answers['license-year']
     });
-    log('License generated');
+    log.success('License generated');
   }
 
   const esLintExists = fs.existsSync(`${cwd}${SEP}.eslintrc.js`)
@@ -369,8 +376,8 @@ async function setup(projectName, opts) {
   });
 
   if(linter === 'eslint' && !esLintExists) {
-    log('You are almost done.');
-    log('Please take a moment to setup ESLint.');
+    log.info('You are almost done.');
+    log.info('Please take a moment to setup ESLint.');
     const cmd = `${cwd}${SEP}node_modules${SEP}.bin${SEP}eslint --init`;
 
     cp.execSync(cmd, {
@@ -380,30 +387,30 @@ async function setup(projectName, opts) {
   }
 
   if(isFreshTestDir) {
-    log('Setting up tests...');
+    log.info('Setting up tests...');
     if(testFramework === 'jasmine') {
       cp.execSync('npx jasmine init', { encoding : 'utf-8' });
     }
 
     createSampleTests(testFramework, srcDir, testDir, testFilesExtension);
-    log('Tests setup complete');
+    log.success('Tests setup complete');
   }
 
   if(!fs.existsSync(`${cwd}${SEP}.nycrc.json`)) {
-    log('Creating .nycrc.json...');
+    log.info('Creating .nycrc.json...');
     writeCoverageConfig(srcDir, testFilesExtension);
-    log('.nycrc.json created');
+    log.success('.nycrc.json created');
   }
 
-  log('You are all set');
-  log(`
-    To run your tests, run "npm test"
-    To run tests with coverage reporting, run "npm run test:coverage"
-    To commit your changes, run "npm run commit"
-    To fix linting errors, run "npm run lint:fix"
-    To run your first release, run "npm run first-release"
-    To run subsequent releases, run "npm run release"
-    To run release dry-run, run "npm run release:dry-run"
+  log.success('You are all set');
+  log.info(`
+    To run your tests, run ${kleur.yellow('npm test')}
+    To run tests with coverage reporting, run ${kleur.yellow('npm run test:coverage')}
+    To commit your changes, run ${kleur.yellow('npm run commit')}
+    To fix linting errors, run ${kleur.yellow('npm run lint:fix')}
+    To run your first release, run ${kleur.yellow('npm run first-release')}
+    To run subsequent releases, run ${kleur.yellow('npm run release')}
+    To run release dry-run, run ${kleur.yellow('npm run release:dry-run')}
   `);
 }
 
@@ -413,9 +420,9 @@ function ask(questions) {
     .then(answers => answers)
     .catch(error => {
       if(error.isTtyError) {
-        log('Prompt cannot be rendered in the current environment');
+        log.warn('Prompt cannot be rendered in the current environment');
       } else {
-        log('Something has gone wrong');
+        log.error('Something has gone wrong');
       }
     });
 }
@@ -467,14 +474,14 @@ async function install(deps, devDeps) {
     }); */
     deps.sort();
 
-    log('Installing dependencies... This might take a while...');
+    log.info('Installing dependencies... This might take a while...');
     for(let i = 0; i < deps.length; i++) {
       const dep = deps[i];
-      log(`installing ${dep}`);
+      log.info(`installing ${dep}`);
       cp.execSync(`npm i -S ${dep}`, processOpts);
-      log(`${dep} installed`);
+      log.success(`${dep} installed`);
     }
-    log('Dependencies installed');
+    log.success('Dependencies installed');
   }
 
   if(Array.isArray(devDeps) && devDeps.length > 0) {
@@ -485,14 +492,14 @@ async function install(deps, devDeps) {
     });*/
     devDeps.sort();
 
-    log('Installing dev dependencies... This might take a while...');
+    log.info('Installing dev dependencies... This might take a while...');
     for(let i = 0; i < devDeps.length; i++) {
       const dep = devDeps[i];
-      log(`installing ${dep}`);
+      log.info(`installing ${dep}`);
       cp.execSync(`npm i -D ${dep}`, processOpts);
-      log(`${dep} installed`);
+      log.success(`${dep} installed`);
     }
-    log('Dev dependencies installed');
+    log.success('Dev dependencies installed');
 
     return true;
   }
@@ -581,9 +588,9 @@ function writeIgnoreFiles() {
   });
   const output = tpl;
 
-  log('Creting .gitignore file...');
+  log.info('Creting .gitignore file...');
   write.sync(destination, output);
-  log('.gitignore file created');
+  log.success('.gitignore file created');
 }
 
 function writeReadMe(projectName, opts) {
@@ -657,7 +664,7 @@ function generateLicense(license, options) {
 }
 
 function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
-  log('Creating sample test files...');
+  log.info('Creating sample test files...');
   let sampleTestSrc = '';
   const isFreshSrcDir = emptyDir.sync(`${cwd}${SEP}${srcDir}`, (filepath) => {
     return !/(Thumbs\.db|\.DS_Store)$/i.test(filepath);
@@ -703,7 +710,19 @@ function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
   }
 
   cp.execSync('npm run lint:fix', { encoding: 'utf-8' });
-  log('Sample test files created');
+  log.success('Sample test files created');
+}
+
+/** Helper functions */
+
+function coloredMsg(msg, color) {
+  if(color) {
+    console.log(kleur[color](msg));
+  } else {
+    console.log(msg);
+  }
+
+  console.log();
 }
 
 // credits: https://stackoverflow.com/a/28191966/1743192
