@@ -15,6 +15,8 @@ const rootDir = path.resolve(__dirname, '..');
 const SEP = path.sep;
 const log = console.log;
 
+let cwd;
+
 module.exports = {
   setup
 };
@@ -25,6 +27,8 @@ module.exports = {
  *   - directory {string} the project directory name
  */
 async function setup(projectName, opts) {
+  cwd = process.cwd();
+
   let ownerName;
   let ownerEmail;
   let projectDesc;
@@ -39,7 +43,6 @@ async function setup(projectName, opts) {
   ];
   const splitRegex = /\s+,?\s+/;
   const { directory: projectDir } = opts;
-  const cwd = process.cwd();
   const gitInitialized = fs.existsSync(`${cwd}/.git`);
   const npmInitialized = fs.existsSync(`${cwd}/package.json`);
 
@@ -367,27 +370,23 @@ async function setup(projectName, opts) {
 
   if(linter === 'eslint' && !esLintExists) {
     log('You are almost done.');
-  }
-
-  if(isFreshTestDir) {
-    if(testFramework === 'jasmine') {
-      cp.execSync('npx jasmine init', {
-        stdio: 'inherit',
-        encoding : 'utf-8'
-      });
-    }
-
-    createSampleTests(testFramework, srcDir, testDir, testFilesExtension);
-  }
-
-  if((linter === 'eslint') && !esLintExists) {
-    log('Please take a moment to setup ESLint');
+    log('Please take a moment to setup ESLint.');
     const cmd = `${cwd}${SEP}node_modules${SEP}.bin${SEP}eslint --init`;
 
     cp.execSync(cmd, {
       stdio: 'inherit',
       encoding : 'utf-8'
     });
+  }
+
+  if(isFreshTestDir) {
+    log('Setting up tests...');
+    if(testFramework === 'jasmine') {
+      cp.execSync('npx jasmine init', { encoding : 'utf-8' });
+    }
+
+    createSampleTests(testFramework, srcDir, testDir, testFilesExtension);
+    log('Tests setup complete');
   }
 
   log('You are all set');
@@ -442,7 +441,7 @@ async function install(deps, devDeps) {
     encoding: 'utf-8',
     //stdio: 'inherit'
   };
-  const packageJson = requireWithoutCache(`${process.cwd()}${SEP}package.json`);
+  const packageJson = requireWithoutCache(`${cwd}${SEP}package.json`);
   const installedDeps = packageJson.dependencies;
   const installedDevDeps = packageJson.devDependencies;
 
@@ -510,7 +509,7 @@ async function writePackageJson(opts) {
     testDirectory,
     sourceDirectory
   } = opts;
-  const packageJson = requireWithoutCache(`${process.cwd()}${SEP}package.json`);
+  const packageJson = requireWithoutCache(`${cwd}${SEP}package.json`);
   let lintCommand;
 
   if(linter === 'eslint') {
@@ -570,7 +569,6 @@ async function writePackageJson(opts) {
 }
 
 function writeIgnoreFiles() {
-  const cwd = process.cwd();
   const destination = `${cwd}/.gitignore`;
   const tpl = read.sync(`${rootDir}${SEP}templates${SEP}.gitignore.tpl`, {
     encoding: 'utf8'
@@ -583,7 +581,6 @@ function writeIgnoreFiles() {
 }
 
 function writeReadMe(projectName, opts) {
-  const cwd = process.cwd();
   const destination = `${cwd}/README.md`;
   const tpl = read.sync(`${rootDir}${SEP}templates${SEP}README.tpl`, {
     encoding: 'utf8'
@@ -615,7 +612,6 @@ function generateLicense(license, options) {
   const owner = options.owner;
   const licenseKey = getKeyByValue(licenses, license);
 
-  const cwd = process.cwd();
   const liceBin = `${rootDir}${SEP}node_modules${SEP}.bin${SEP}lice`;
 
   cp.execSync(`${liceBin} -g -l ${licenseKey} -n "${cwd}${SEP}LICENSE.md" -u "${owner}" -y "${year}"`, {
@@ -628,8 +624,8 @@ function generateLicense(license, options) {
 }
 
 function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
+  log('Creating sample test files...');
   let sampleTestSrc = '';
-  const cwd = process.cwd();
   const isFreshSrcDir = emptyDir.sync(`${cwd}${SEP}${srcDir}`, (filepath) => {
     return !/(Thumbs\.db|\.DS_Store)$/i.test(filepath);
   });
@@ -674,6 +670,7 @@ function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
   }
 
   cp.execSync('npm run lint:fix', { encoding: 'utf-8' });
+  log('Sample test files created');
 }
 
 // credits: https://stackoverflow.com/a/28191966/1743192
