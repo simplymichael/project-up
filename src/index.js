@@ -5,6 +5,7 @@ const cp = require('child_process');
 const write = require('write');
 const read = require('read-file');
 const inquirer = require('inquirer');
+const emptyDir = require('empty-dir');
 const writePackage = require('write-pkg');
 const requireUncached = require('require-without-cache');
 const badges = require('../badges');
@@ -28,11 +29,9 @@ async function setup(projectName, opts) {
   let ownerEmail;
   let dependencies = [];
   let devDependencies = [
-    'chai',
     'commitizen',
     'cz-conventional-changelog',
     'ghooks',
-    'mocha',
     'nyc',
     'run-script-os',
     'standard-version'
@@ -129,6 +128,13 @@ async function setup(projectName, opts) {
     },
     {
       type: 'list',
+      name: 'test-framework',
+      message: 'Choose a test framework:',
+      choices: ['Jasmine', 'Mocha'],
+      default: 'Mocha'
+    },
+    {
+      type: 'list',
       name: 'create-test-directory',
       message: 'Create test directory:',
       choices: ['yes', 'no', 'already have']
@@ -137,11 +143,34 @@ async function setup(projectName, opts) {
       type: 'input',
       name: 'test-directory',
       message: 'Specify your test directory:',
-      default: '_tests',
+      default: function(answers) {
+        return answers['test-framework'].toLowerCase() === 'jasmine'
+          ? 'spec'
+          : 'tests';
+      },
       when: function(answers) {
         const createTestDir = answers['create-test-directory'];
 
         return createTestDir === 'yes' || createTestDir === 'already have';
+      }
+    },
+    {
+      type: 'list',
+      name: 'test-files-extension',
+      message: 'Test files extension:',
+      choices: ['spec.js', '.test.js', 'Other'],
+      default: function(answers) {
+        return answers['test-framework'].toLowerCase() === 'jasmine'
+          ? 'spec.js'
+          : '.test.js';
+      }
+    },
+    {
+      type: 'input',
+      name: 'custom-test-files-extension',
+      message: 'Please specify the test files extension:',
+      when: function(answers) {
+        return answers['test-files-extension'].toLowerCase() === 'other';
       }
     },
     {
@@ -178,10 +207,20 @@ async function setup(projectName, opts) {
           License: {
             name: answers['license'],
           },
+          test: {
+            framework: answers['test-framework'],
+            extension: answers['test-files-extension'].toLowerCase() === 'other'
+              ? answers['custom-test-files-extension']
+              : answers['test-files-extension']
+          },
           Linter: answers['linter'],
-          'Dev dependencies': devDependencies.concat(
-            [answers['linter'].toLowerCase()]).concat(
-            answers['dev-dependencies'].split(splitRegex))
+          'Dev dependencies': devDependencies
+            .concat(answers['test-framework'].toLowerCase() === 'jasmine'
+              ? ['jasmine'] : ['mocha', 'chai'])
+            .concat([answers['linter'].toLowerCase()])
+            .concat(answers['dev-dependencies'].split(splitRegex))
+            .filter(el => el.length > 0)
+            .sort(),
         };
 
         if(answers['dependencies']) {
@@ -198,18 +237,26 @@ async function setup(projectName, opts) {
         }
 
         if(answers['test-directory']) {
-          settings['Test directory'] = answers['test-directory'];
+          settings['test']['directory'] = answers['test-directory'];
         }
 
+        log('Please review your selection: ');
         log(util.inspect(settings));
 
-        return 'These are your settings; is this ok? [Y/n]:';
+        return 'Proceed? [Y/n]:';
       }
     }
   ];
   const answers = await ask(questions);
+  const linter = answers['linter'].toLowerCase();
   const srcDir = answers['src-directory'];
   const testDir = answers['test-directory'];
+  const testFramework = answers['test-framework'].toLowerCase();
+  const testFilesExtension = (
+    answers['test-files-extension'].toLowerCase() === 'other'
+      ? answers['custom-test-files-extension']
+      : answers['test-files-extension']
+  );
 
   if(answers['proceed'].toLowerCase() === 'n') {
     process.exit('0');
@@ -224,10 +271,18 @@ async function setup(projectName, opts) {
   if(answers['dev-dependencies']) {
     const userDevDeps = answers['dev-dependencies'].split(splitRegex);
 
-    devDependencies = devDependencies.concat(userDevDeps);
+    devDependencies = devDependencies.concat(userDevDeps).sort();
+  }
+
+  if(answers['test-framework'].toLowerCase() === 'jasmine') {
+    devDependencies.push('jasmine');
+  } else {
+    devDependencies.push('mocha', 'chai');
   }
 
   devDependencies.push(answers['linter'].toLowerCase());
+
+  devDependencies = devDependencies.filter(el => el.length > 0);
 
   // If the directory is not a git-directory, then initialize git
   if(!gitInitialized) {
@@ -269,7 +324,9 @@ async function setup(projectName, opts) {
   await writePackageJson({
     description: answers['description'],
     license: getKeyByValue(licenses, answers['license']).toUpperCase(),
-    linter: answers['linter'].toLowerCase(),
+    testFramework: testFramework,
+    testFilesExtension: testFilesExtension,
+    linter: linter,
     sourceDirectory: srcDir,
     testDirectory: testDir,
   });
@@ -294,17 +351,36 @@ async function setup(projectName, opts) {
     log('License generated');
   }
 
-  const esLintExists = fs.existsSync(`${cwd}/eslintrc.js`)
-    || fs.existsSync(`${cwd}/eslintrc.json`)
-    || fs.existsSync(`${cwd}/eslintrc.yml`);
+  const esLintExists = fs.existsSync(`${cwd}/.eslintrc.js`)
+    || fs.existsSync(`${cwd}/.eslintrc.json`)
+    || fs.existsSync(`${cwd}/.eslintrc.yml`);
 
-  if((answers['linter'].toLowerCase() === 'eslint') && !esLintExists) {
+  const isFreshTestDir = emptyDir.sync(`${cwd}${SEP}${testDir}`, (filepath) => {
+    return !/(Thumbs\.db|\.DS_Store)$/i.test(filepath);
+  });
+
+  if(linter === 'eslint' && !esLintExists) {
+    log('You are almost done.');
+  }
+
+  if(isFreshTestDir) {
+    if(testFramework === 'jasmine') {
+      cp.execSync('npx jasmine init', {
+        stdio: 'inherit',
+        encoding : 'utf-8'
+      });
+    }
+
+    createSampleTests(testFramework, srcDir, testDir, testFilesExtension);
+  }
+
+  if((linter === 'eslint') && !esLintExists) {
     log('Please take a moment to setup ESLint');
     const cmd = `${cwd}${SEP}node_modules${SEP}.bin${SEP}eslint --init`;
 
     cp.execSync(cmd, {
       stdio: 'inherit',
-      encoding : 'utf8'
+      encoding : 'utf-8'
     });
   }
 
@@ -378,6 +454,7 @@ async function install(deps, devDeps) {
     /*deps.forEach(async dep => {
       await execShellCommand(`npm i -S ${dep}`, processOpts);
     }); */
+    deps.sort();
 
     log('Installing dependencies... This might take a while...');
     for(let i = 0; i < deps.length; i++) {
@@ -395,6 +472,7 @@ async function install(deps, devDeps) {
     /*devDeps.forEach(async dep => {
       await execShellCommand(`npm i -D ${dep}`, processOpts);
     });*/
+    devDeps.sort();
 
     log('Installing dev dependencies... This might take a while...');
     for(let i = 0; i < devDeps.length; i++) {
@@ -421,6 +499,8 @@ async function writePackageJson(opts) {
     description,
     license,
     linter,
+    testFramework,
+    testFilesExtension,
     testDirectory,
     sourceDirectory
   } = opts;
@@ -462,8 +542,8 @@ async function writePackageJson(opts) {
 
   if(testDirectory) {
     scripts['test'] = 'run-script-os';
-    scripts['test:nix'] = `NODE_ENV=test mocha ${testDirectory}/"{,/**/}*.test.js"`;
-    scripts['test:win32'] = `set NODE_ENV=test& mocha ${testDirectory}/"{,/**/}*.test.js"`;
+    scripts['test:nix'] = `NODE_ENV=test ${testFramework} ${testDirectory}/"{,/**/}*${testFilesExtension}"`;
+    scripts['test:win32'] = `set NODE_ENV=test& ${testFramework} ${testDirectory}/"{,/**/}*${testFilesExtension}"`;
     scripts['test:watch'] = 'npm test -- -w';
     scripts['test:coverage'] = 'nyc npm test';
     scripts['prerelease'] = 'npm run test:coverage';
@@ -535,6 +615,59 @@ function generateLicense(license, options) {
   cp.execSync(`${liceBin} -g -l ${licenseKey} -n "${cwd}${SEP}LICENSE.md" -u "${owner}" -y "${year}"`, {
     encoding : 'utf8'
   });
+
+  if(fs.existsSync(`${cwd}${SEP}LICENSE`)) {
+    fs.renameSync(`${cwd}${SEP}LICENSE`, `${cwd}${SEP}LICENSE.md`);
+  }
+}
+
+function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
+  let sampleTestSrc = '';
+  const cwd = process.cwd();
+  const isFreshSrcDir = emptyDir.sync(`${cwd}${SEP}${srcDir}`, (filepath) => {
+    return !/(Thumbs\.db|\.DS_Store)$/i.test(filepath);
+  });
+
+  if(testFramework === 'jasmine') {
+    sampleTestSrc = `
+    const jasmine = require('jasmine');
+    const hello = require('../${srcDir}/index.example.js');
+
+    describe('Basic test', function() {
+      it('should pass', function() {
+        expect(hello()).toEqual('hello world');
+      });
+    });
+    `;
+  } else {
+    sampleTestSrc = `
+    const chai = require('chai');
+    const hello = require('../${srcDir}/index.example.js');
+    const { expect } = chai;
+
+    describe('Basic test', function() {
+      it('should pass', function() {
+        expect(hello()).to.equal('hello world');
+      });
+    });
+    `;
+  }
+
+  write.sync(
+    `${cwd}${SEP}${testDir}${SEP}example${testFilesExtension}`, sampleTestSrc);
+
+  if(isFreshSrcDir) {
+    const sampleSrc = `
+    module.exports = function greeting() {
+      return 'hello world';
+    }
+    `;
+
+    write.sync(
+      `${cwd}${SEP}${srcDir}${SEP}index.example.js`, sampleSrc);
+  }
+
+  cp.execSync('npm run lint:fix', { encoding: 'utf-8' });
 }
 
 // credits: https://stackoverflow.com/a/28191966/1743192
