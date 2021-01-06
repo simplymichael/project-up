@@ -360,9 +360,9 @@ async function setup(projectName, opts) {
     log('License generated');
   }
 
-  const esLintExists = fs.existsSync(`${cwd}/.eslintrc.js`)
-    || fs.existsSync(`${cwd}/.eslintrc.json`)
-    || fs.existsSync(`${cwd}/.eslintrc.yml`);
+  const esLintExists = fs.existsSync(`${cwd}${SEP}.eslintrc.js`)
+    || fs.existsSync(`${cwd}${SEP}.eslintrc.json`)
+    || fs.existsSync(`${cwd}${SEP}.eslintrc.yml`);
 
   const isFreshTestDir = emptyDir.sync(`${cwd}${SEP}${testDir}`, (filepath) => {
     return !/(Thumbs\.db|\.DS_Store)$/i.test(filepath);
@@ -387,6 +387,12 @@ async function setup(projectName, opts) {
 
     createSampleTests(testFramework, srcDir, testDir, testFilesExtension);
     log('Tests setup complete');
+  }
+
+  if(!fs.existsSync(`${cwd}${SEP}.nycrc.json`)) {
+    log('Creating .nycrc.json...');
+    writeCoverageConfig(srcDir, testFilesExtension);
+    log('.nycrc.json created');
   }
 
   log('You are all set');
@@ -605,6 +611,33 @@ function writeReadMe(projectName, opts) {
   );
 
   write.sync(destination, output);
+}
+
+function writeCoverageConfig(srcDir, testFilesExtension) {
+  const str = `
+  {
+    "all": true,
+    "check-coverage": true,
+    "include": [
+      "${srcDir}/**/*.js"
+    ],
+    "exclude": [
+      "**/*${testFilesExtension}",
+    ],
+    "reporter": [
+      "json",
+      "lcov",
+      "text-summary",
+      "clover"
+    ],
+    "branches": 100,
+    "lines": 100,
+    "functions": 100,
+    "statements": 100
+  }
+  `;
+
+  write.sync(`${cwd}${SEP}.nycrc.json`, str);
 }
 
 function generateLicense(license, options) {
