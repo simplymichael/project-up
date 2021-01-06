@@ -27,6 +27,7 @@ module.exports = {
 async function setup(projectName, opts) {
   let ownerName;
   let ownerEmail;
+  let projectDesc;
   let dependencies = [];
   let devDependencies = [
     'commitizen',
@@ -41,6 +42,10 @@ async function setup(projectName, opts) {
   const cwd = process.cwd();
   const gitInitialized = fs.existsSync(`${cwd}/.git`);
   const npmInitialized = fs.existsSync(`${cwd}/package.json`);
+
+  if(npmInitialized) {
+    projectDesc = requireWithoutCache(`${cwd}/package.json`).description.trim();
+  }
 
   if(gitInitialized) {
     ownerName = await(execShellCommand('git config user.name'));
@@ -60,6 +65,7 @@ async function setup(projectName, opts) {
       type: 'input',
       name: 'description',
       message: 'Project description:',
+      default: projectDesc
     },
     {
       type: 'input',
