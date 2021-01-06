@@ -622,7 +622,7 @@ function writeCoverageConfig(srcDir, testFilesExtension) {
       "${srcDir}/**/*.js"
     ],
     "exclude": [
-      "**/*${testFilesExtension}",
+      "**/*${testFilesExtension}"
     ],
     "reporter": [
       "json",
