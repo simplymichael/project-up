@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const util = require('util');
 const cp = require('child_process');
+const ora = require('ora');
 const kleur = require('kleur');
 const write = require('write');
 const read = require('read-file');
@@ -14,7 +15,8 @@ const licenses = require('../licenses');
 const currentYear = new Date().getFullYear();
 const rootDir = path.resolve(__dirname, '..');
 const SEP = path.sep;
-const log = {
+const log = console.log;
+const marker = {
   error: (msg) => coloredMsg(msg, 'red'),
   info: (msg) => coloredMsg(msg, 'cyan'),
   normal: (msg) => coloredMsg(msg),
@@ -256,8 +258,8 @@ async function setup(projectName, opts) {
           settings['test']['directory'] = answers['test-directory'];
         }
 
-        log.info('Please review your selection: ');
-        log.normal(util.inspect(settings));
+        log(marker.info('Please review your selection: '));
+        log(marker.normal(util.inspect(settings)));
 
         return 'Proceed? [Y/n]:';
       }
@@ -302,41 +304,45 @@ async function setup(projectName, opts) {
 
   // If the directory is not a git-directory, then initialize git
   if(!gitInitialized) {
-    log.info('Initializing git...');
+    const gitSpinner = ora(marker.info('Initializing git...')).start();
     gitInit({
       github: {
         username: answers['name'],
         email: answers['gh-email']
       },
     });
-    log.success('Initialized empty git repository');
+    gitSpinner.succeed(marker.success('Initialized empty git repository'));
   } else {
-    log.info('The specified directory is a git repository... skipping "git init"');
+    log(marker.info(
+      'The specified directory is a git repository... skipping "git init"'));
   }
 
   if(!npmInitialized) {
-    log.info('Creating package.json...');
+    const npmSpinner = ora(marker.info('Creating package.json...')).start();
     npmInit();
-    log.success('package.json created');
+    npmSpinner.succeed(marker.success('package.json created'));
   } else {
-    log.info('The specified directory already contains a package.json file... skipping "npm init"');
+    log(marker.info(
+      'The specified directory already contains a package.json file... skipping "npm init"'));
   }
 
   if(srcDir && !fs.existsSync(`${cwd}${SEP}${srcDir}`)) {
-    log.info(`Creating source directory ${srcDir}...`);
+    const sdSpinner = ora(marker.info(
+      `Creating source directory ${srcDir}...`)).start();
     fs.mkdirSync(`${cwd}${SEP}${srcDir}`);
-    log.success('Source directory created');
+    sdSpinner.succeed(marker.success('Source directory created'));
   }
 
   if(testDir && !fs.existsSync(`${cwd}${SEP}${testDir}`)) {
-    log.info(`Creating test directory ${testDir}...`);
+    const tdSpinner = ora(marker.info(
+      `Creating test directory ${testDir}...`)).start();
     fs.mkdirSync(`${cwd}${SEP}${testDir}`);
-    log.success('Test directory created');
+    tdSpinner.succeed(marker.success('Test directory created'));
   }
 
   await install(dependencies, devDependencies);
 
-  log.info('Updating package.json...');
+  const pjSpinner = ora(marker.info('Updating package.json...')).start();
   await writePackageJson({
     description: answers['description'],
     license: getKeyByValue(licenses, answers['license']).toUpperCase(),
@@ -346,9 +352,9 @@ async function setup(projectName, opts) {
     sourceDirectory: srcDir,
     testDirectory: testDir,
   });
-  log.success('package.json updated');
+  pjSpinner.succeed(marker.success('package.json updated'));
 
-  log.info('Creating README file...');
+  const readmeSpinner = ora(marker.info('Creating README file...')).start();
   await writeReadMe(projectName, {
     description: answers['description'],
     github: {
@@ -356,15 +362,16 @@ async function setup(projectName, opts) {
       projectPath: opts.directory,
     },
   });
-  log.success('README file created');
+  readmeSpinner.succeed(marker.success('README file created'));
 
   if(answers['license'].toLowerCase() !== 'none') {
-    log.info(`Generating ${answers['license']} license...`);
+    const lcSpinner = ora(
+      marker.info(`Generating ${answers['license']} license...`)).start();
     generateLicense(answers['license'], {
       owner: answers['license-owner'],
       year: answers['license-year']
     });
-    log.success('License generated');
+    lcSpinner.succeed(marker.success('License generated'));
   }
 
   const esLintExists = fs.existsSync(`${cwd}${SEP}.eslintrc.js`)
@@ -376,8 +383,8 @@ async function setup(projectName, opts) {
   });
 
   if(linter === 'eslint' && !esLintExists) {
-    log.info('You are almost done.');
-    log.info('Please take a moment to setup ESLint.');
+    log(marker.info('You are almost done.'));
+    log(marker.info('Please take a moment to setup ESLint.'));
     const cmd = `${cwd}${SEP}node_modules${SEP}.bin${SEP}eslint --init`;
 
     cp.execSync(cmd, {
@@ -387,23 +394,24 @@ async function setup(projectName, opts) {
   }
 
   if(isFreshTestDir) {
-    log.info('Setting up tests...');
+    const testSpinner = ora(marker.info('Setting up tests...')).start();
+    log();
     if(testFramework === 'jasmine') {
       cp.execSync('npx jasmine init', { encoding : 'utf-8' });
     }
 
     createSampleTests(testFramework, srcDir, testDir, testFilesExtension);
-    log.success('Tests setup complete');
+    testSpinner.succeed(marker.success('Tests setup complete'));
   }
 
   if(!fs.existsSync(`${cwd}${SEP}.nycrc.json`)) {
-    log.info('Creating .nycrc.json...');
+    const nycSpinner = ora(marker.info('Creating .nycrc.json...'));
     writeCoverageConfig(srcDir, testFilesExtension);
-    log.success('.nycrc.json created');
+    nycSpinner.succeed(marker.success('.nycrc.json created'));
   }
 
-  log.success('You are all set');
-  log.info(`
+  log(marker.success('You are all set'));
+  log(marker.info(`
     To run your tests, run ${kleur.yellow('npm test')}
     To run tests with coverage reporting, run ${kleur.yellow('npm run test:coverage')}
     To commit your changes, run ${kleur.yellow('npm run commit')}
@@ -411,7 +419,7 @@ async function setup(projectName, opts) {
     To run your first release, run ${kleur.yellow('npm run first-release')}
     To run subsequent releases, run ${kleur.yellow('npm run release')}
     To run release dry-run, run ${kleur.yellow('npm run release:dry-run')}
-  `);
+  `));
 }
 
 function ask(questions) {
@@ -420,9 +428,9 @@ function ask(questions) {
     .then(answers => answers)
     .catch(error => {
       if(error.isTtyError) {
-        log.warn('Prompt cannot be rendered in the current environment');
+        log(marker.warn('Prompt cannot be rendered in the current environment'));
       } else {
-        log.error('Something has gone wrong');
+        log(marker.error('Something has gone wrong'));
       }
     });
 }
@@ -474,14 +482,17 @@ async function install(deps, devDeps) {
     }); */
     deps.sort();
 
-    log.info('Installing dependencies... This might take a while...');
+    const depsSpinner = ora(marker.info(
+      'Installing dependencies... This might take a while...')).start();
+    log(); // Create a line space between log messages
     for(let i = 0; i < deps.length; i++) {
       const dep = deps[i];
-      log.info(`installing ${dep}`);
+      let currSpinner = ora(marker.info(`installing ${dep}`)).start();
+      log();
       cp.execSync(`npm i -S ${dep}`, processOpts);
-      log.success(`${dep} installed`);
+      currSpinner.succeed(marker.success(`${dep} installed`));
     }
-    log.success('Dependencies installed');
+    depsSpinner.succeed(marker.success('Dependencies installed'));
   }
 
   if(Array.isArray(devDeps) && devDeps.length > 0) {
@@ -492,14 +503,17 @@ async function install(deps, devDeps) {
     });*/
     devDeps.sort();
 
-    log.info('Installing dev dependencies... This might take a while...');
+    const devDepsSpinner = ora(marker.info(
+      'Installing dev dependencies... This might take a while...')).start();
+    log(); // Create a line space between log messages
     for(let i = 0; i < devDeps.length; i++) {
       const dep = devDeps[i];
-      log.info(`installing ${dep}`);
+      let currSpinner = ora(marker.info(`installing ${dep}`)).start();
+      log();
       cp.execSync(`npm i -D ${dep}`, processOpts);
-      log.success(`${dep} installed`);
+      currSpinner.succeed(marker.success(`${dep} installed`));
     }
-    log.success('Dev dependencies installed');
+    devDepsSpinner.succeed(marker.success('Dev dependencies installed'));
 
     return true;
   }
@@ -588,9 +602,9 @@ function writeIgnoreFiles() {
   });
   const output = tpl;
 
-  log.info('Creting .gitignore file...');
+  const giSpinner = ora(marker.info('Creating .gitignore file...')).start();
   write.sync(destination, output);
-  log.success('.gitignore file created');
+  giSpinner.succeed(marker.success('.gitignore file created'));
 }
 
 function writeReadMe(projectName, opts) {
@@ -664,7 +678,7 @@ function generateLicense(license, options) {
 }
 
 function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
-  log.info('Creating sample test files...');
+  const stSpinner = ora(marker.info('Creating sample test files...')).start();
   let sampleTestSrc = '';
   const isFreshSrcDir = emptyDir.sync(`${cwd}${SEP}${srcDir}`, (filepath) => {
     return !/(Thumbs\.db|\.DS_Store)$/i.test(filepath);
@@ -710,19 +724,13 @@ function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
   }
 
   cp.execSync('npm run lint:fix', { encoding: 'utf-8' });
-  log.success('Sample test files created');
+  stSpinner.succeed(marker.success('Sample test files created'));
 }
 
 /** Helper functions */
 
 function coloredMsg(msg, color) {
-  if(color) {
-    console.log(kleur[color](msg));
-  } else {
-    console.log(msg);
-  }
-
-  console.log();
+  return color ? kleur[color](msg) : msg;
 }
 
 // credits: https://stackoverflow.com/a/28191966/1743192
