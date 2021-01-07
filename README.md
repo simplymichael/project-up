@@ -38,15 +38,30 @@ Remember to wrap in quotes if the project name is multi-word: `project-up "SIMPL
 - Generate License File (using [lice][lice])
 - Can be run on an existing git or npm project
 
+## Running scripts in the generated project
+
+First `cd` into the project directory, then run the appropriate script:
+
+| Action                        | Usage                     |
+| ------------------------------| ------------------------- |
+| Linting code                  | `npm run lint`            |
+| Fix linting errors            | `npm run lint:fix`        |
+| Commit staged changes         | `npm run commit`          |
+| Running tests                 | `npm test`                |
+| Running tests + code coverage | `npm run test:coverage`   |
+| First release                 | `npm run first-release`   |
+| Subsequent releases           | `npm run release`         |
+| Release dry-run               | `npm run release:dry-run` |
 
 
-[chai]: [npm.im/chai]
-[commitizen]: [npm.im/commitizen]
-[cz-conv]: [npm.im/cz-conventional-changelog]
-[eslint]: [npm.im/eslint]
-[jasmine]: [npm.im/jasmine]
-[lice]: [npm.im/lice]
-[mocha]: [npm.im/mocha]
-[nyc]: [npm.im/nyc]
-[standard]: [npm.im/standard]
-[standard-v]: [npm.im/standard-version]
+
+[chai]: https://npm.im/chai
+[commitizen]: https://npm.im/commitizen
+[cz-conv]: https://npm.im/cz-conventional-changelog
+[eslint]: https://npm.im/eslint
+[jasmine]: https://npm.im/jasmine
+[lice]: https://npm.im/lice
+[mocha]: https://npm.im/mocha
+[nyc]: https://npm.im/nyc
+[standard]: https://npm.im/standard
+[standard-v]: https://npm.im/standard-version
