@@ -26,6 +26,9 @@ const marker = {
 };
 
 let cwd;
+let processOpts = {
+  encoding: 'utf-8'
+};
 
 module.exports = {
   setup
@@ -52,9 +55,13 @@ async function setup(projectName, opts) {
     'standard-version'
   ];
   const splitRegex = /\s+,?\s+/;
-  const { directory: projectDir } = opts;
+  const { directory: projectDir, verbose } = opts;
   const gitInitialized = fs.existsSync(`${cwd}/.git`);
   const npmInitialized = fs.existsSync(`${cwd}/package.json`);
+
+  if(verbose) {
+    processOpts.stdio = 'inherit';
+  }
 
   if(npmInitialized) {
     projectDesc = requireWithoutCache(`${cwd}/package.json`).description.trim();
@@ -446,7 +453,7 @@ async function setup(projectName, opts) {
 
     cp.execSync(cmd, {
       stdio: 'inherit',
-      encoding : 'utf-8'
+      encoding: 'utf-8'
     });
   }
 
@@ -454,7 +461,7 @@ async function setup(projectName, opts) {
     const testSpinner = ora(marker.info('Setting up tests...')).start();
     log();
     if(testFramework === 'jasmine') {
-      cp.execSync('npx jasmine init', { encoding : 'utf-8' });
+      cp.execSync('npx jasmine init', processOpts);
     }
 
     createSampleTests(testFramework, srcDir, testDir, testFilesExtension);
@@ -515,10 +522,6 @@ function npmInit() {
  * @param devDeps {string} optional, the dev dependencies
  */
 async function install(deps, devDeps) {
-  const processOpts = {
-    encoding: 'utf-8',
-    //stdio: 'inherit'
-  };
   const packageJson = requireWithoutCache(`${cwd}${SEP}package.json`);
   const installedDeps = packageJson.dependencies;
   const installedDevDeps = packageJson.devDependencies;
@@ -532,11 +535,6 @@ async function install(deps, devDeps) {
   }
 
   if(Array.isArray(deps) && deps.length > 0) {
-    //cp.execSync(`npm i -S ${deps.join(' ')}`, processOpts);
-
-    /*deps.forEach(async dep => {
-      await execShellCommand(`npm i -S ${dep}`, processOpts);
-    }); */
     deps.sort();
 
     const depsSpinner = ora(marker.info(
@@ -553,11 +551,6 @@ async function install(deps, devDeps) {
   }
 
   if(Array.isArray(devDeps) && devDeps.length > 0) {
-    //cp.execSync(`npm i -D ${devDeps.join(' ')}`, processOpts);
-
-    /*devDeps.forEach(async dep => {
-      await execShellCommand(`npm i -D ${dep}`, processOpts);
-    });*/
     devDeps.sort();
 
     const devDepsSpinner = ora(marker.info(
@@ -780,7 +773,7 @@ function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
       `${cwd}${SEP}${srcDir}${SEP}index.example.js`, sampleSrc);
   }
 
-  cp.execSync('npm run lint:fix', { encoding: 'utf-8' });
+  cp.execSync('npm run lint:fix', processOpts);
   stSpinner.succeed(marker.success('Sample test files created'));
 }
 
@@ -803,15 +796,14 @@ function getKeyByValue(object, value) {
  * @credits: https://ali-dev.medium.com/how-to-use-promise-with-exec-in-node-js-a39c4d7bbf77
  */
 function execShellCommand(cmd, options) {
-  //const exec = require('child_process').exec;
   return new Promise((resolve, reject) => {
     cp.exec(cmd, options, (error, stdout, stderr) => {
       if (error) {
-        console.warn(error);
+        log(marker.error(error));
         reject(error);
       }
 
-      resolve(stdout? stdout : stderr);
+      resolve(stdout ? stdout : stderr);
     });
   });
 }
