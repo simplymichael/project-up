@@ -52,6 +52,7 @@
   },
   "dependencies": {
     "commander": "6.2.1",
+    "email-validator": "2.0.4",
     "empty-dir": "2.0.0",
     "inquirer": "7.3.3",
     "kleur": "4.1.3",

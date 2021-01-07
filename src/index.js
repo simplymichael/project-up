@@ -9,6 +9,7 @@ const read = require('read-file');
 const inquirer = require('inquirer');
 const emptyDir = require('empty-dir');
 const writePackage = require('write-pkg');
+const emailValidator = require('email-validator');
 const requireUncached = require('require-without-cache');
 const badges = require('../badges');
 const licenses = require('../licenses');
@@ -85,12 +86,26 @@ async function setup(projectName, opts) {
       message: 'Your name (git config user.name value):',
       when: function() {
         return !gitInitialized;
+      },
+      validate: function(input) {
+        if(input.length === 0) {
+          return 'Please enter your name (git config user.name value):';
+        }
+
+        return true;
       }
     },
     {
       type: 'input',
       name: 'gh-username',
       message: 'Github username:',
+      validate: function(input) {
+        if(input.length === 0) {
+          return 'Please enter your Github username:';
+        }
+
+        return true;
+      }
     },
     {
       type: 'input',
@@ -98,6 +113,13 @@ async function setup(projectName, opts) {
       message: 'Github email:',
       when: function() {
         return !gitInitialized;
+      },
+      validate: function(input) {
+        if(!emailValidator.validate(input)) {
+          return 'Please enter a valid email:';
+        }
+
+        return true;
       }
     },
     {
@@ -116,6 +138,13 @@ async function setup(projectName, opts) {
       },
       when: function(answers) {
         return answers['license'].toLowerCase() !== 'none';
+      },
+      validate: function(input) {
+        if(input.length === 0) {
+          return 'Please enter the license owner name:';
+        }
+
+        return true;
       }
     },
     {
@@ -125,6 +154,13 @@ async function setup(projectName, opts) {
       default: currentYear,
       when: function(answers) {
         return answers['license'].toLowerCase() !== 'none';
+      },
+      validate: function(input) {
+        if(input.length === 0) {
+          return 'Please enter the license year:';
+        }
+
+        return true;
       }
     },
     {
@@ -142,6 +178,13 @@ async function setup(projectName, opts) {
         const createSrcDir = answers['create-src-directory'];
 
         return createSrcDir === 'yes' || createSrcDir === 'already have';
+      },
+      validate: function(input) {
+        if(input.length === 0) {
+          return 'Please enter the name of your source directory:';
+        }
+
+        return true;
       }
     },
     {
@@ -170,6 +213,13 @@ async function setup(projectName, opts) {
         const createTestDir = answers['create-test-directory'];
 
         return createTestDir === 'yes' || createTestDir === 'already have';
+      },
+      validate: function(input) {
+        if(input.length === 0) {
+          return 'Please enter the name of your test directory:';
+        }
+
+        return true;
       }
     },
     {
@@ -189,6 +239,13 @@ async function setup(projectName, opts) {
       message: 'Please specify the test files extension:',
       when: function(answers) {
         return answers['test-files-extension'].toLowerCase() === 'other';
+      },
+      validate: function(input) {
+        if(input.length === 0) {
+          return 'Please specify your test files extension:';
+        }
+
+        return true;
       }
     },
     {
