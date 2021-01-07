@@ -6,12 +6,17 @@ const program = require('commander');
 const package = require('../src');
 const { setup } = package;
 const log = console.log;
+const options = [
+  'verbose'
+];
 let projectDir = path.basename(path.resolve(process.cwd()));
 let projectName = projectDir;
 
 program
+  .name('project-up')
   .version(require('../package.json').version)
-  .arguments('<name>');
+  .option('-v, --verbose', 'enable verbose output')
+  .arguments('<PROJECT_NAME>');
 
 program.parse(process.argv);
 
@@ -39,5 +44,6 @@ process.chdir(projectDir);
 (async function() {
   await setup(projectName, {
     directory: projectDir,
+    verbose: program.verbose
   });
 })();
