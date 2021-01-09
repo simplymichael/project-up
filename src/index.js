@@ -39,6 +39,7 @@ module.exports = {
 /**
  * @param opts {object} with members:
  *   - directory {string} the project directory name
+ *   - verbose {boolean} true displays verbose output
  */
 async function setup(projectName, opts) {
   cwd = process.cwd();
@@ -563,9 +564,8 @@ async function npmInit(opts) {
 }
 
 /**
- * @param path {string} optional, the path to install to
- * @param deps {string} optional, the dependencies
- * @param devDeps {string} optional, the dev dependencies
+ * @param deps {array} optional, the dependencies
+ * @param devDeps {array} optional, the dev dependencies
  */
 async function install(deps, devDeps) {
   const packageJson = requireWithoutCache(`${cwd}${SEP}package.json`);
@@ -616,9 +616,13 @@ async function install(deps, devDeps) {
 }
 
 /**
- * @param path {string} optional, path to the package.json file
  * @param opts {object} with members:
+ *   - description {string}
+ *   - license {string}
+ *   - githubUrl {string}
  *   - linter {string} eslint | markdown
+ *   - testFramework {string}
+ *   - testFilesExtension {string}
  *   - sourceDirectory {string} source files directory
  *   - testDirectory {string} directory holding test files
  */
@@ -853,17 +857,15 @@ function coloredMsg(msg, color) {
   return color ? kleur[color](msg) : msg;
 }
 
-// credits: https://stackoverflow.com/a/28191966/1743192
 function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
 }
 
 /**
  * Executes a shell command and return it as a Promise.
- * @param cmd {string}
+ * @param cmd {string} required
+ * @param options {object} optional
  * @return {Promise<string>}
- *
- * @credits: https://ali-dev.medium.com/how-to-use-promise-with-exec-in-node-js-a39c4d7bbf77
  */
 function execShellCommand(cmd, options) {
   return new Promise((resolve, reject) => {
