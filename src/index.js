@@ -131,6 +131,14 @@ async function setup(projectName, opts) {
       }
     },
     {
+      type: 'input',
+      name: 'gh-url',
+      message: 'Github project URL:',
+      default: function(answers) {
+        return `https://github.com/${answers['gh-username']}/${projectDir}.git`;
+      }
+    },
+    {
       type: 'list',
       name: 'license',
       message: 'License:',
@@ -286,6 +294,7 @@ async function setup(projectName, opts) {
           GitHub: {
             username: answers['gh-username'],
             email: answers['gh-email'] || ownerEmail,
+            url: answers['gh-url']
           },
           License: {
             name: answers['license'],
@@ -386,7 +395,8 @@ async function setup(projectName, opts) {
     const npmSpinner = ora(marker.info('Creating package.json...')).start();
     await npmInit({
       description: answers['description'],
-      license: getKeyByValue(licenses, answers['license']).toUpperCase()
+      license: getKeyByValue(licenses, answers['license']).toUpperCase(),
+      githubUrl: answers['gh-url']
     });
     npmSpinner.succeed(marker.success('package.json created'));
   } else {
@@ -414,6 +424,7 @@ async function setup(projectName, opts) {
   await writePackageJson({
     description: answers['description'],
     license: getKeyByValue(licenses, answers['license']).toUpperCase(),
+    githubUrl: answers['gh-url'],
     testFramework: testFramework,
     testFilesExtension: testFilesExtension,
     linter: linter,
@@ -520,7 +531,7 @@ function gitInit(opts) {
 async function npmInit(opts) {
   cp.execSync('npm init -y');
 
-  const { description, license } = opts;
+  const { description, license, githubUrl } = opts;
   const packageJson = requireWithoutCache(`${cwd}${SEP}package.json`);
 
   if(description && typeof description === 'string') {
@@ -529,6 +540,23 @@ async function npmInit(opts) {
 
   if(license && typeof license === 'string') {
     packageJson.license = license;
+  }
+
+  if(githubUrl) {
+    const ghUrl = githubUrl.endsWith('.git')
+      ? githubUrl.slice(0, -4)
+      : githubUrl;
+
+    packageJson.repository = {
+      'type': 'git',
+      'url': `git+${ghUrl}.git`
+    };
+
+    packageJson.bugs = {
+      'url': `${ghUrl}/issues`
+    };
+
+    packageJson.homepage = `${ghUrl}#readme`;
   }
 
   await writePackage(packageJson);
@@ -598,6 +626,7 @@ async function writePackageJson(opts) {
   const {
     description,
     license,
+    githubUrl,
     linter,
     testFramework,
     testFilesExtension,
@@ -655,6 +684,29 @@ async function writePackageJson(opts) {
 
   if(license && packageJson.license.trim().length === 0) {
     packageJson.license = license;
+  }
+
+  if(githubUrl) {
+    const ghUrl = githubUrl.endsWith('.git')
+      ? githubUrl.slice(0, -4)
+      : githubUrl;
+
+    if(!packageJson.repository) {
+      packageJson.repository = {
+        'type': 'git',
+        'url': `git+${ghUrl}.git`
+      };
+    }
+
+    if(!packageJson.bugs) {
+      packageJson.bugs = {
+        'url': `${ghUrl}/issues`
+      };
+    }
+
+    if(!packageJson.homepage) {
+      packageJson.homepage = `${ghUrl}#readme`;
+    }
   }
 
   packageJson.scripts = scripts;

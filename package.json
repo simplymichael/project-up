@@ -1,7 +1,7 @@
 {
   "name": "project-up",
   "version": "0.0.0",
-  "description": "",
+  "description": "Quickly setup a Node.js application by answering a few simple questions.",
   "main": "src/index.js",
   "bin": {
     "project-up": "bin/cli.js"
@@ -23,10 +23,15 @@
     "url": "git+https://github.com/simplymichael/project-up.git"
   },
   "keywords": [
-    "project",
-    "setup",
     "cli",
-    "npm"
+    "create",
+    "create project",
+    "git",
+    "git setup",
+    "node",
+    "npm",
+    "project",
+    "setup"
   ],
   "author": "simplymichael <simplymichaelorji@gmail.com> (https://github.com/simplymichael)",
   "license": "MIT",
