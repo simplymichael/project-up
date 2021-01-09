@@ -426,6 +426,7 @@ async function setup(projectName, opts) {
       username: answers['gh-username'],
       projectPath: opts.directory,
     },
+    linter: linter
   });
   readmeSpinner.succeed(marker.success('README file created'));
 
@@ -674,11 +675,11 @@ function writeReadMe(projectName, opts) {
     [
       projectName,
       opts.description,
-      badges['license-mit']
+      badges['license']
         .replace(/\{gh-username\}/g, opts.github.username)
         .replace(/\{project-name\}/g, opts.github.projectPath),
       badges['conventional-commits'],
-      badges['js-style-guide']
+      (opts.linter === 'standard' ? badges['standard'] : '')
     ]
   );
 
