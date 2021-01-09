@@ -15,7 +15,7 @@ Install as a global module: `npm install -g project-up`
 
 If the project name is not given, it is derived from the name of the current working directory.
 
-Remember to wrap in quotes if the project name is multi-word: `project-up "SIMPLE PROJECT"`.
+Remember to wrap in quotes if the project name is multi-word with spaces: `project-up "SIMPLE PROJECT"`.
 
 ## Options
 

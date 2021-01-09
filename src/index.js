@@ -384,7 +384,10 @@ async function setup(projectName, opts) {
 
   if(!npmInitialized) {
     const npmSpinner = ora(marker.info('Creating package.json...')).start();
-    npmInit();
+    await npmInit({
+      description: answers['description'],
+      license: getKeyByValue(licenses, answers['license']).toUpperCase()
+    });
     npmSpinner.succeed(marker.success('package.json created'));
   } else {
     log(marker.info(
@@ -514,8 +517,21 @@ function gitInit(opts) {
   );
 }
 
-function npmInit() {
+async function npmInit(opts) {
   cp.execSync('npm init -y');
+
+  const { description, license } = opts;
+  const packageJson = requireWithoutCache(`${cwd}${SEP}package.json`);
+
+  if(description && typeof description === 'string') {
+    packageJson.description = description;
+  }
+
+  if(license && typeof license === 'string') {
+    packageJson.license = license;
+  }
+
+  await writePackage(packageJson);
 }
 
 /**
