@@ -57,8 +57,8 @@ async function setup(projectName, opts) {
   ];
   const splitRegex = /\s+,?\s+/;
   const { directory: projectDir, verbose } = opts;
-  const gitInitialized = fs.existsSync(`${cwd}/.git`);
-  const npmInitialized = fs.existsSync(`${cwd}/package.json`);
+  const gitInitialized = fileExists(`${cwd}/.git`);
+  const npmInitialized = fileExists(`${cwd}/package.json`);
 
   if(verbose) {
     processOpts.stdio = 'inherit';
@@ -391,14 +391,14 @@ async function setup(projectName, opts) {
       'The specified directory already contains a package.json file... skipping "npm init"'));
   }
 
-  if(srcDir && !fs.existsSync(`${cwd}${SEP}${srcDir}`)) {
+  if(srcDir && !fileExists(`${cwd}${SEP}${srcDir}`)) {
     const sdSpinner = ora(marker.info(
       `Creating source directory ${srcDir}...`)).start();
     fs.mkdirSync(`${cwd}${SEP}${srcDir}`);
     sdSpinner.succeed(marker.success('Source directory created'));
   }
 
-  if(testDir && !fs.existsSync(`${cwd}${SEP}${testDir}`)) {
+  if(testDir && !fileExists(`${cwd}${SEP}${testDir}`)) {
     const tdSpinner = ora(marker.info(
       `Creating test directory ${testDir}...`)).start();
     fs.mkdirSync(`${cwd}${SEP}${testDir}`);
@@ -440,9 +440,9 @@ async function setup(projectName, opts) {
     lcSpinner.succeed(marker.success('License generated'));
   }
 
-  const esLintExists = fs.existsSync(`${cwd}${SEP}.eslintrc.js`)
-    || fs.existsSync(`${cwd}${SEP}.eslintrc.json`)
-    || fs.existsSync(`${cwd}${SEP}.eslintrc.yml`);
+  const esLintExists = fileExists(`${cwd}${SEP}.eslintrc.js`)
+    || fileExists(`${cwd}${SEP}.eslintrc.json`)
+    || fileExists(`${cwd}${SEP}.eslintrc.yml`);
 
   const isFreshTestDir = emptyDir.sync(`${cwd}${SEP}${testDir}`, (filepath) => {
     return !/(Thumbs\.db|\.DS_Store)$/i.test(filepath);
@@ -470,7 +470,7 @@ async function setup(projectName, opts) {
     testSpinner.succeed(marker.success('Tests setup complete'));
   }
 
-  if(!fs.existsSync(`${cwd}${SEP}.nycrc.json`)) {
+  if(!fileExists(`${cwd}${SEP}.nycrc.json`)) {
     const nycSpinner = ora(marker.info('Creating .nycrc.json...'));
     writeCoverageConfig(srcDir, testFilesExtension);
     nycSpinner.succeed(marker.success('.nycrc.json created'));
@@ -724,7 +724,7 @@ function generateLicense(license, options) {
     encoding : 'utf8'
   });
 
-  if(fs.existsSync(`${cwd}${SEP}LICENSE`)) {
+  if(fileExists(`${cwd}${SEP}LICENSE`)) {
     fs.renameSync(`${cwd}${SEP}LICENSE`, `${cwd}${SEP}LICENSE.md`);
   }
 }
@@ -808,6 +808,10 @@ function execShellCommand(cmd, options) {
       resolve(stdout ? stdout : stderr);
     });
   });
+}
+
+function fileExists(file) {
+  return fs.existsSync(file);
 }
 
 function replaceTemplateTags(source, tagNames, replacements) {
