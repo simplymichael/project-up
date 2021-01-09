@@ -11,11 +11,12 @@ const emptyDir = require('empty-dir');
 const writePackage = require('write-pkg');
 const emailValidator = require('email-validator');
 const requireUncached = require('require-without-cache');
-const badges = require('../badges');
-const licenses = require('../licenses');
+const badges = require('./badges');
+const licenses = require('./licenses');
+const SEP = path.sep;
 const currentYear = new Date().getFullYear();
 const rootDir = path.resolve(__dirname, '..');
-const SEP = path.sep;
+const templatesDir = `${rootDir}${SEP}src${SEP}templates`;
 const log = console.log;
 const marker = {
   error: (msg) => coloredMsg(msg, 'red'),
@@ -647,7 +648,7 @@ async function writePackageJson(opts) {
 
 function writeIgnoreFiles() {
   const destination = `${cwd}/.gitignore`;
-  const tpl = read.sync(`${rootDir}${SEP}templates${SEP}.gitignore.tpl`, {
+  const tpl = read.sync(`${templatesDir}${SEP}.gitignore.tpl`, {
     encoding: 'utf8'
   });
   const output = tpl;
@@ -659,7 +660,7 @@ function writeIgnoreFiles() {
 
 function writeReadMe(projectName, opts) {
   const destination = `${cwd}/README.md`;
-  const tpl = read.sync(`${rootDir}${SEP}templates${SEP}README.tpl`, {
+  const tpl = read.sync(`${templatesDir}${SEP}README.tpl`, {
     encoding: 'utf8'
   });
   const output = replaceTemplateTags(tpl,
