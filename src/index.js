@@ -11,9 +11,11 @@ const emptyDir = require('empty-dir');
 const writePackage = require('write-pkg');
 const emailValidator = require('email-validator');
 const requireUncached = require('require-without-cache');
+const i18n = require('./i18n');
 const badges = require('./badges');
 const licenses = require('./licenses');
 const SEP = path.sep;
+const { __: translate } = i18n;
 const currentYear = new Date().getFullYear();
 const rootDir = path.resolve(__dirname, '..');
 const templatesDir = `${rootDir}${SEP}src${SEP}templates`;
@@ -39,6 +41,7 @@ module.exports = {
 /**
  * @param opts {object} with members:
  *   - directory {string} the project directory name
+ *   - locale {string}
  *   - verbose {boolean} true displays verbose output
  */
 async function setup(projectName, opts) {
@@ -57,9 +60,11 @@ async function setup(projectName, opts) {
     'standard-version'
   ];
   const splitRegex = /\s+,?\s+/;
-  const { directory: projectDir, verbose } = opts;
+  const { directory: projectDir, locale, verbose } = opts;
   const gitInitialized = fileExists(`${cwd}/.git`);
   const npmInitialized = fileExists(`${cwd}/package.json`);
+
+  i18n.setLocale(locale || 'en');
 
   if(verbose) {
     processOpts.stdio = 'inherit';
@@ -86,19 +91,19 @@ async function setup(projectName, opts) {
     {
       type: 'input',
       name: 'description',
-      message: 'Project description:',
+      message: `${translate('Project description')}:`,
       default: projectDesc
     },
     {
       type: 'input',
       name: 'name',
-      message: 'Your name (git config user.name value):',
+      message: `${translate('Your name')}:`,
       when: function() {
         return !gitInitialized;
       },
       validate: function(input) {
         if(input.length === 0) {
-          return 'Please enter your name (git config user.name value):';
+          return `${translate('Your name')}:`;
         }
 
         return true;
@@ -107,10 +112,10 @@ async function setup(projectName, opts) {
     {
       type: 'input',
       name: 'gh-username',
-      message: 'Github username:',
+      message: `${translate('Github username')}:`,
       validate: function(input) {
         if(input.length === 0) {
-          return 'Please enter your Github username:';
+          return `${translate('Github username')}:`;
         }
 
         return true;
@@ -119,13 +124,13 @@ async function setup(projectName, opts) {
     {
       type: 'input',
       name: 'gh-email',
-      message: 'Github email:',
+      message: `${translate('Github email')}:`,
       when: function() {
         return !gitInitialized;
       },
       validate: function(input) {
         if(!emailValidator.validate(input)) {
-          return 'Please enter a valid email:';
+          return `${translate('Enter a valid email')}:`;
         }
 
         return true;
@@ -134,7 +139,7 @@ async function setup(projectName, opts) {
     {
       type: 'input',
       name: 'gh-url',
-      message: 'Github project URL:',
+      message: `${translate('Project URL')}:`,
       default: function(answers) {
         return `https://github.com/${answers['gh-username']}/${projectDir}.git`;
       }
@@ -142,23 +147,24 @@ async function setup(projectName, opts) {
     {
       type: 'list',
       name: 'license',
-      message: 'License:',
-      choices: ['No License'].concat(Object.values(licenses)),
-      default: licenses['mit']
+      message: `${translate('License')}:`,
+      choices: [translate('Unlicensed')].concat(Object.values(licenses)),
+      default: licenses['mit'],
+      loop: false
     },
     {
       type: 'input',
       name: 'license-owner',
-      message: 'License Owner/Organization name:',
+      message: `${translate('License Owner')}:`,
       default: function(answers) {
         return gitInitialized ? ownerName : answers['name'];
       },
       when: function(answers) {
-        return answers['license'].toLowerCase() !== 'none';
+        return answers['license'] !== translate('Unlicensed');
       },
       validate: function(input) {
         if(input.length === 0) {
-          return 'Please enter the license owner name:';
+          return `${translate('License Owner')}:`;
         }
 
         return true;
@@ -167,14 +173,14 @@ async function setup(projectName, opts) {
     {
       type: 'input',
       name: 'license-year',
-      message: 'License Year:',
+      message: `${translate('License Year')}:`,
       default: currentYear,
       when: function(answers) {
-        return answers['license'].toLowerCase() !== 'none';
+        return answers['license'] !== translate('Unlicensed');
       },
       validate: function(input) {
         if(input.length === 0) {
-          return 'Please enter the license year:';
+          return `${translate('License year')}:`;
         }
 
         return true;
@@ -183,22 +189,27 @@ async function setup(projectName, opts) {
     {
       type: 'list',
       name: 'create-src-directory',
-      message: 'Create source directory:',
-      choices: ['yes', 'no', 'already have']
+      message: `${translate('Create source directory')}:`,
+      choices: [
+        translate('Yes'),
+        translate('No'),
+        translate('Already have')
+      ]
     },
     {
       type: 'input',
       name: 'src-directory',
-      message: 'Specify your source directory:',
+      message: `${translate('Specify source directory')}:`,
       default: 'src',
       when: function(answers) {
         const createSrcDir = answers['create-src-directory'];
 
-        return createSrcDir === 'yes' || createSrcDir === 'already have';
+        return createSrcDir === translate('Yes') ||
+          createSrcDir === translate('Already have');
       },
       validate: function(input) {
         if(input.length === 0) {
-          return 'Please enter the name of your source directory:';
+          return `${translate('Specify source directory')}:`;
         }
 
         return true;
@@ -207,20 +218,24 @@ async function setup(projectName, opts) {
     {
       type: 'list',
       name: 'test-framework',
-      message: 'Choose a test framework:',
+      message: `${translate('Choose test framework')}:`,
       choices: ['Jasmine', 'Mocha'],
       default: 'Mocha'
     },
     {
       type: 'list',
       name: 'create-test-directory',
-      message: 'Create test directory:',
-      choices: ['yes', 'no', 'already have']
+      message: `${translate('Create test directory')}:`,
+      choices: [
+        translate('Yes'),
+        translate('No'),
+        translate('Already have')
+      ]
     },
     {
       type: 'input',
       name: 'test-directory',
-      message: 'Specify your test directory:',
+      message: `${translate('Specify test directory')}:`,
       default: function(answers) {
         return answers['test-framework'].toLowerCase() === 'jasmine'
           ? 'spec'
@@ -229,11 +244,12 @@ async function setup(projectName, opts) {
       when: function(answers) {
         const createTestDir = answers['create-test-directory'];
 
-        return createTestDir === 'yes' || createTestDir === 'already have';
+        return createTestDir === translate('Yes') ||
+          createTestDir === translate('Already have');
       },
       validate: function(input) {
         if(input.length === 0) {
-          return 'Please enter the name of your test directory:';
+          return `${translate('Specify test directory')}:`;
         }
 
         return true;
@@ -242,8 +258,8 @@ async function setup(projectName, opts) {
     {
       type: 'list',
       name: 'test-files-extension',
-      message: 'Test files extension:',
-      choices: ['spec.js', '.test.js', 'Other'],
+      message: `${translate('Test files extension')}:`,
+      choices: ['spec.js', '.test.js', translate('Other')],
       default: function(answers) {
         return answers['test-framework'].toLowerCase() === 'jasmine'
           ? 'spec.js'
@@ -253,13 +269,13 @@ async function setup(projectName, opts) {
     {
       type: 'input',
       name: 'custom-test-files-extension',
-      message: 'Please specify the test files extension:',
+      message: `${translate('Other test files extension')}:`,
       when: function(answers) {
-        return answers['test-files-extension'].toLowerCase() === 'other';
+        return answers['test-files-extension'] === translate('Other');
       },
       validate: function(input) {
         if(input.length === 0) {
-          return 'Please specify your test files extension:';
+          return `${translate('Other test files extension')}:`;
         }
 
         return true;
@@ -268,46 +284,46 @@ async function setup(projectName, opts) {
     {
       type: 'list',
       name: 'linter',
-      message: 'Linter:',
-      choices: ['ESLint', 'Standard', 'None']
+      message: translate('Linter'),
+      choices: ['ESLint', 'Standard', translate('None')]
     },
     {
       type: 'input',
       name: 'dependencies',
-      message: 'Dependencies, separated by spaces or commas: (dep@version dep2 dep3@version):'
+      message: `${translate('Specify dependencies')}:`
     },
     {
       type: 'input',
       name: 'dev-dependencies',
-      message: 'Dev dependencies, separated by spaces or commas: (dep@version dep2 dep3@version):'
+      message: `${translate('Specify dev dependencies')}:`
     },
     {
       type: 'input',
       name: 'proceed',
       message: function(answers) {
         const settings = {
-          Project: {
-            name: projectName,
-            directory: projectDir,
-            description: answers['description'],
-            owner: answers['name'] || ownerName
+          [translate('Project')]: {
+            [translate('Project name')]: projectName,
+            [translate('Project directory')]: projectDir,
+            [translate('Project description')]: answers['description'],
+            [translate('Project owner')]: answers['name'] || ownerName
           },
-          GitHub: {
-            username: answers['gh-username'],
-            email: answers['gh-email'] || ownerEmail,
-            url: answers['gh-url']
+          [translate('GitHub')]: {
+            [translate('GitHub username')]: answers['gh-username'],
+            [translate('GitHub email')]: answers['gh-email'] || ownerEmail,
+            [translate('GitHub url')]: answers['gh-url']
           },
-          License: {
-            name: answers['license'],
+          [translate('License')]: {
+            [translate('LName')]: answers['license'],
           },
-          test: {
-            framework: answers['test-framework'],
-            extension: answers['test-files-extension'].toLowerCase() === 'other'
+          [translate('Test')]: {
+            [translate('Test framework')]: answers['test-framework'],
+            [translate('Test extension')]: answers['test-files-extension'].toLowerCase() === 'other'
               ? answers['custom-test-files-extension']
               : answers['test-files-extension']
           },
-          Linter: answers['linter'],
-          'Dev dependencies': devDependencies
+          [translate('Linter')]: answers['linter'],
+          [translate('Dev dependencies')]: devDependencies
             .concat(answers['test-framework'].toLowerCase() === 'jasmine'
               ? ['jasmine'] : ['mocha', 'chai'])
             .concat([answers['linter'].toLowerCase()])
@@ -317,26 +333,26 @@ async function setup(projectName, opts) {
         };
 
         if(answers['dependencies']) {
-          settings['Dependencies'] = answers['dependencies'].split(splitRegex);
+          settings[translate('Dependencies')] = answers['dependencies'].split(splitRegex);
         }
 
-        if(answers['license'].toLowerCase() !== 'none') {
-          settings['License']['owner'] = answers['license-owner'];
-          settings['License']['year'] = answers['license-year'];
+        if(answers['license'] !== translate('Unlicensed')) {
+          settings[translate('License')][translate('LOwner')] = answers['license-owner'];
+          settings[translate('License')][translate('LYear')] = answers['license-year'];
         }
 
         if(answers['src-directory']) {
-          settings['Source directory'] = answers['src-directory'];
+          settings[translate('Source directory')] = answers['src-directory'];
         }
 
         if(answers['test-directory']) {
-          settings['test']['directory'] = answers['test-directory'];
+          settings[translate('Test')][translate('Test directory')] = answers['test-directory'];
         }
 
-        log(marker.info('Please review your selection: '));
+        log(marker.info(`${translate('Review selection')}`));
         log(marker.normal(util.inspect(settings)));
 
-        return 'Proceed? [Y/n]:';
+        return `${translate('Proceed?')} [Y/n]:`;
       }
     }
   ];
@@ -379,49 +395,54 @@ async function setup(projectName, opts) {
 
   // If the directory is not a git-directory, then initialize git
   if(!gitInitialized) {
-    const gitSpinner = ora(marker.info('Initializing git...')).start();
+    const gitSpinner = ora(marker.info(translate(
+      'Initializing git'))).start();
     gitInit({
       github: {
         username: answers['name'],
         email: answers['gh-email']
       },
     });
-    gitSpinner.succeed(marker.success('Initialized empty git repository'));
+    gitSpinner.succeed(marker.success(translate(
+      'Initialized empty git repository')));
   } else {
-    log(marker.info(
-      'The specified directory is a git repository... skipping "git init"'));
+    log(marker.info(translate(
+      'The specified directory is a git repository... skipping "git init"')));
   }
 
   if(!npmInitialized) {
-    const npmSpinner = ora(marker.info('Creating package.json...')).start();
+    const npmSpinner = ora(marker.info(translate(
+      'Creating package.json'))).start();
     await npmInit({
       description: answers['description'],
       license: getKeyByValue(licenses, answers['license']).toUpperCase(),
       githubUrl: answers['gh-url']
     });
-    npmSpinner.succeed(marker.success('package.json created'));
+    npmSpinner.succeed(marker.success(translate('package.json created')));
   } else {
-    log(marker.info(
-      'The specified directory already contains a package.json file... skipping "npm init"'));
+    log(marker.info(translate(
+      'The specified directory already contains a package.json file... skipping "npm init"'
+    )));
   }
 
   if(srcDir && !fileExists(`${cwd}${SEP}${srcDir}`)) {
-    const sdSpinner = ora(marker.info(
-      `Creating source directory ${srcDir}...`)).start();
+    const sdSpinner = ora(marker.info(translate(
+      'Creating source directory'))).start();
     fs.mkdirSync(`${cwd}${SEP}${srcDir}`);
-    sdSpinner.succeed(marker.success('Source directory created'));
+    sdSpinner.succeed(marker.success(translate('Source directory created')));
   }
 
   if(testDir && !fileExists(`${cwd}${SEP}${testDir}`)) {
-    const tdSpinner = ora(marker.info(
-      `Creating test directory ${testDir}...`)).start();
+    const tdSpinner = ora(marker.info(translate(
+      'Creating test directory'))).start();
     fs.mkdirSync(`${cwd}${SEP}${testDir}`);
-    tdSpinner.succeed(marker.success('Test directory created'));
+    tdSpinner.succeed(marker.success(translate('Test directory created')));
   }
 
   await install(dependencies, devDependencies);
 
-  const pjSpinner = ora(marker.info('Updating package.json...')).start();
+  const pjSpinner = ora(marker.info(translate(
+    'Updating package.json'))).start();
   await writePackageJson({
     description: answers['description'],
     license: getKeyByValue(licenses, answers['license']).toUpperCase(),
@@ -432,9 +453,10 @@ async function setup(projectName, opts) {
     sourceDirectory: srcDir,
     testDirectory: testDir,
   });
-  pjSpinner.succeed(marker.success('package.json updated'));
+  pjSpinner.succeed(marker.success(translate('package.json updated')));
 
-  const readmeSpinner = ora(marker.info('Creating README file...')).start();
+  const readmeSpinner = ora(marker.info(translate(
+    'Creating README file'))).start();
   await writeReadMe(projectName, {
     description: answers['description'],
     github: {
@@ -443,16 +465,15 @@ async function setup(projectName, opts) {
     },
     linter: linter
   });
-  readmeSpinner.succeed(marker.success('README file created'));
+  readmeSpinner.succeed(marker.success(translate('README file created')));
 
-  if(answers['license'].toLowerCase() !== 'none') {
-    const lcSpinner = ora(
-      marker.info(`Generating ${answers['license']} license...`)).start();
+  if(answers['license'] !== translate('Unlicensed')) {
+    const lcSpinner = ora(marker.info(translate('Generating license'))).start();
     generateLicense(answers['license'], {
       owner: answers['license-owner'],
       year: answers['license-year']
     });
-    lcSpinner.succeed(marker.success('License generated'));
+    lcSpinner.succeed(marker.success(translate('License generated')));
   }
 
   const esLintExists = fileExists(`${cwd}${SEP}.eslintrc.js`)
@@ -464,8 +485,8 @@ async function setup(projectName, opts) {
   });
 
   if(linter === 'eslint' && !esLintExists) {
-    log(marker.info('You are almost done.'));
-    log(marker.info('Please take a moment to setup ESLint.'));
+    log(marker.info(translate('You are almost done')));
+    log(marker.info(translate('Take a moment to setup ESLint')));
     const cmd = `${cwd}${SEP}node_modules${SEP}.bin${SEP}eslint --init`;
 
     cp.execSync(cmd, {
@@ -475,31 +496,34 @@ async function setup(projectName, opts) {
   }
 
   if(isFreshTestDir) {
-    const testSpinner = ora(marker.info('Setting up tests...')).start();
+    const testSpinner = ora(marker.info(translate(
+      'Setting up tests'))).start();
     log();
     if(testFramework === 'jasmine') {
       cp.execSync('npx jasmine init', processOpts);
     }
 
     createSampleTests(testFramework, srcDir, testDir, testFilesExtension);
-    testSpinner.succeed(marker.success('Tests setup complete'));
+    testSpinner.succeed(marker.success(translate('Tests setup complete')));
   }
 
   if(!fileExists(`${cwd}${SEP}.nycrc.json`)) {
-    const nycSpinner = ora(marker.info('Creating .nycrc.json...'));
+    const nycSpinner = ora(marker.info(
+      translate('Creating') + ' .nycrc.json...')).start();
+    log();
     writeCoverageConfig(srcDir, testFilesExtension);
-    nycSpinner.succeed(marker.success('.nycrc.json created'));
+    nycSpinner.succeed(marker.success('.nycrc.json ' + translate('created')));
   }
 
-  log(marker.success('You are all set'));
+  log(marker.success(translate('All set')));
   log(marker.info(`
-    To run your tests, run ${kleur.yellow('npm test')}
-    To run tests with coverage reporting, run ${kleur.yellow('npm run test:coverage')}
-    To commit your changes, run ${kleur.yellow('npm run commit')}
-    To fix linting errors, run ${kleur.yellow('npm run lint:fix')}
-    To run your first release, run ${kleur.yellow('npm run first-release')}
-    To run subsequent releases, run ${kleur.yellow('npm run release')}
-    To run release dry-run, run ${kleur.yellow('npm run release:dry-run')}
+    ${translate('Run tests')} ${kleur.yellow('npm test')}
+    ${translate('Run coverage')} ${kleur.yellow('npm run test:coverage')}
+    ${translate('Commit')} ${kleur.yellow('npm run commit')}
+    ${translate('Fix linting errors')} ${kleur.yellow('npm run lint:fix')}
+    ${translate('First release')} ${kleur.yellow('npm run first-release')}
+    ${translate('Subsequent releases')} ${kleur.yellow('npm run release')}
+    ${translate('Release dry-run')} ${kleur.yellow('npm run release:dry-run')}
   `));
 }
 
@@ -509,9 +533,10 @@ function ask(questions) {
     .then(answers => answers)
     .catch(error => {
       if(error.isTtyError) {
-        log(marker.warn('Prompt cannot be rendered in the current environment'));
+        log(marker.warn(translate(
+          'Prompt cannot be rendered in the current environment')));
       } else {
-        log(marker.error('Something has gone wrong'));
+        log(marker.error(translate('Something has gone wrong')));
       }
     });
 }
@@ -523,9 +548,7 @@ function gitInit(opts) {
 
   cp.execSync(
     `git init && git config user.name "${username}" && git config user.email ${email}`,
-    {
-      //stdio: 'inherit'
-    }
+    processOpts
   );
 }
 
@@ -584,32 +607,40 @@ async function install(deps, devDeps) {
     deps.sort();
 
     const depsSpinner = ora(marker.info(
-      'Installing dependencies... This might take a while...')).start();
+      translate('Installing dependencies') + ' ' +
+      translate('This might take a while')
+    )).start();
     log(); // Create a line space between log messages
     for(let i = 0; i < deps.length; i++) {
       const dep = deps[i];
-      let currSpinner = ora(marker.info(`installing ${dep}`)).start();
+      let currSpinner = ora(marker.info(
+        translate('Installing') + ' ' + dep)).start();
       log();
       cp.execSync(`npm i -S ${dep}`, processOpts);
-      currSpinner.succeed(marker.success(`${dep} installed`));
+      currSpinner.succeed(marker.success(dep + ' ' + translate('installed')));
     }
-    depsSpinner.succeed(marker.success('Dependencies installed'));
+    depsSpinner.succeed(marker.success(
+      translate('Dependencies installed')));
   }
 
   if(Array.isArray(devDeps) && devDeps.length > 0) {
     devDeps.sort();
 
     const devDepsSpinner = ora(marker.info(
-      'Installing dev dependencies... This might take a while...')).start();
+      translate('Installing dev dependencies') + ' ' +
+      translate('This might take a while')
+    )).start();
     log(); // Create a line space between log messages
     for(let i = 0; i < devDeps.length; i++) {
       const dep = devDeps[i];
-      let currSpinner = ora(marker.info(`installing ${dep}`)).start();
+      let currSpinner = ora(marker.info(
+        translate('Installing') + ' ' + dep )).start();
       log();
       cp.execSync(`npm i -D ${dep}`, processOpts);
-      currSpinner.succeed(marker.success(`${dep} installed`));
+      currSpinner.succeed(marker.success(dep + ' ' + translate('installed')));
     }
-    devDepsSpinner.succeed(marker.success('Dev dependencies installed'));
+    devDepsSpinner.succeed(marker.success(
+      translate('Dev dependencies installed')));
 
     return true;
   }
@@ -726,9 +757,13 @@ function writeIgnoreFiles() {
   });
   const output = tpl;
 
-  const giSpinner = ora(marker.info('Creating .gitignore file...')).start();
+  const giSpinner = ora(marker.info(
+    translate('Creating') + ' .gitignore' +
+    translate('file') + '...'
+  )).start();
   write.sync(destination, output);
-  giSpinner.succeed(marker.success('.gitignore file created'));
+  giSpinner.succeed(marker.success(
+    '.gitignore ' + translate('file') + translate('created')));
 }
 
 function writeReadMe(projectName, opts) {
@@ -802,7 +837,8 @@ function generateLicense(license, options) {
 }
 
 function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
-  const stSpinner = ora(marker.info('Creating sample test files...')).start();
+  const stSpinner = ora(marker.info(translate(
+    'Creating sample test files'))).start();
   let sampleTestSrc = '';
   const isFreshSrcDir = emptyDir.sync(`${cwd}${SEP}${srcDir}`, (filepath) => {
     return !/(Thumbs\.db|\.DS_Store)$/i.test(filepath);
@@ -814,8 +850,8 @@ function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
     const hello = require('../${srcDir}/index.example.js');
 
     describe('Basic test', function() {
-      it('should pass', function() {
-        expect(hello()).toEqual('hello world');
+      it(${translate('Should pass')}, function() {
+        expect(hello()).toEqual('${translate('Hello world')}');
       });
     });
     `;
@@ -826,8 +862,8 @@ function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
     const { expect } = chai;
 
     describe('Basic test', function() {
-      it('should pass', function() {
-        expect(hello()).to.equal('hello world');
+      it(${translate('Should pass')}, function() {
+        expect(hello()).to.equal('${translate('Hello world')}');
       });
     });
     `;
@@ -839,7 +875,7 @@ function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
   if(isFreshSrcDir) {
     const sampleSrc = `
     module.exports = function greeting() {
-      return 'hello world';
+      return '${translate('Hello world')}';
     }
     `;
 
@@ -847,8 +883,15 @@ function createSampleTests(testFramework, srcDir, testDir, testFilesExtension) {
       `${cwd}${SEP}${srcDir}${SEP}index.example.js`, sampleSrc);
   }
 
-  cp.execSync('npm run lint:fix', processOpts);
-  stSpinner.succeed(marker.success('Sample test files created'));
+  try {
+    cp.execSync('npm run lint:fix', processOpts);
+  } catch(err) {
+    log(marker.warn(translate(
+      'There appears to be some linting errors. Run "npm run lint" to check them'
+    )));
+  }
+
+  stSpinner.succeed(marker.success(translate('Sample test files created')));
 }
 
 /** Helper functions */

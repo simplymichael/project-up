@@ -20,7 +20,8 @@ Remember to wrap in quotes if the project name is multi-word with spaces: `proje
 ## Options
 
 - **-V**, **--version**: output version information
-- **-v**, **--verbose**: enable verbose output, including output from child processes
+- **-v**, **--verbose**: enable verbose output
+- **-l**, **--locale**: specify locale
 - **-h**, **--help**: display command help
 
 ## Features

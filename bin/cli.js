@@ -7,7 +7,8 @@ const package = require('../src');
 const { setup } = package;
 const log = console.log;
 const options = [
-  'verbose'
+  'verbose',
+  'locale'
 ];
 let projectDir = path.basename(path.resolve(process.cwd()));
 let projectName = projectDir;
@@ -16,6 +17,7 @@ program
   .name('project-up')
   .version(require('../package.json').version)
   .option('-v, --verbose', 'enable verbose output')
+  .option('-l --locale <locale>', 'specify locale')
   .arguments('<PROJECT_NAME>');
 
 program.parse(process.argv);
@@ -44,6 +46,7 @@ process.chdir(projectDir);
 (async function() {
   await setup(projectName, {
     directory: projectDir,
+    locale: program.locale,
     verbose: program.verbose
   });
 })();
