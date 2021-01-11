@@ -1,0 +1,136 @@
+{
+  "answers": {
+    "alreadyHave": "already have",
+    "no": "no",
+    "none": "None",
+    "other": "Other",
+    "unlicensed": "Unlicensed",
+    "yes": "yes"
+  },
+  "info": {
+    "promptNotSupported": "Prompt cannot be rendered in the current environment",
+    "somethingWrong": "Something has gone wrong"
+  },
+  "questions": {
+    "projectDesc": "description",
+    "createSrcDir": "Create source directory",
+    "specifySrcDir": "Specify your source directory",
+    "linter": "Linter",
+    "dependencies": "Dependencies, separated by spaces or commas: (dep@version dep2 dep3@version)",
+    "devDependencies": "Dev dependencies, separated by spaces or commas: (dep@version dep2 dep3@version)",
+    "github": {
+      "configName": "Your name (git config user.name value)",
+      "username": "Github username",
+      "email": "Github email",
+      "validEmailPrompt": "Please enter a valid email",
+      "url": "Github project URL"
+    },
+    "license": {
+      "titler": "License",
+      "owner": "License Owner/Organization name",
+      "year": "License Year"
+    },
+    "tests": {
+      "framework": "Choose a test framework",
+      "createDir": "Create test directory",
+      "specifyDir": "Specify your test directory",
+      "directory": "Test directory",
+      "filesExt": "Test files extension",
+      "unlistedFilesExt": "Specify your test files extension"
+    },
+    "choices": {
+      "project": {
+        "header": "Project",
+        "name": "name",
+        "description": "description",
+        "directory": "directory",
+        "owner": "owner"
+      },
+      "github": {
+        "header": "GitHub",
+        "username": "username",
+        "email": "email",
+        "url": "url"
+      },
+      "license": {
+        "header": "License",
+        "owner": "owner",
+        "name": "name",
+        "year": "year"
+      },
+      "tests": {
+        "header": "Test",
+        "framework": "framework",
+        "extension": "extension",
+        "directory": "directory"
+      },
+      "linter": "Linter",
+      "dependencies": "Dependencies",
+      "devDependencies": "Dev dependencies",
+      "srcDir": "Source directory",
+      "review": "Please review selection",
+      "proceed": "Proceed?"
+    }
+	},
+  "setup": {
+    "creating": "Creating",
+    "created": "created",
+    "delayedOp": "This might take a while",
+    "installing": "Installing",
+    "installed": "installed",
+    "git": {
+      "initializing": "Initializing git...",
+      "initialized": "Initialized empty git repository",
+      "isRepo": "The specified directory is a git repository...",
+      "isSkipping": "Skipping \"git init\"'",
+      "creatingIgnoreFile": "Creating .gitignore file...",
+      "ignoreFileCreated": ".gitignore file created"
+    },
+    "npm": {
+      "initializing": "Creating package.json...",
+      "initialized": "package.json created",
+      "hasPackageJson": "The specified directory already contains a package.json file...",
+      "isSkipping": "skipping \"npm init\"",
+      "installingDeps": "Installing dependencies",
+      "installingDevDeps": "Installing dev dependencies",
+      "depsInstalled": "Dependencies installed",
+      "devDepsInstalled": "Dev dependencies installed",
+      "updating": "Updating package.json",
+    	"updated": "package.json updated"
+    },
+    "tests": {
+      "settingUp": "Setting up tests",
+      "setupComplete": "Tests setup complete",
+      "creatingSamples": "Creating sample test files...",
+      "samplesCreated": "Sample test files created",
+    	"shouldPass": "should pass",
+    	"helloWorld": "Hello world!"
+    },
+    "directories": {
+      "creatingSrcDir": "Creating source directory",
+    	"srcDirCreated": "Source directory created",
+    	"creatingTestDir": "Creating test directory",
+    	"testDirCreated": "Test directory created"
+    },
+    "files": {
+      "creatingReadme": "Creating README file",
+    	"readmeCreated": "README file created",
+    	"generatingLicense": "Generating license",
+    	"licenseGenerated": "License generated"
+    },
+    "finalize": {
+      "almostDone": "You are almost done",
+      "setupEslint": "Please take a moment to setup ESLint.",
+      "lintingErrors": "There appears to be some linting errors.",
+      "checkLintingErrors": "Run \"npm run lint\" to check them",
+    	"allSet": "You are all set",
+    	"runTests": "To run your tests, run",
+    	"runCoverage": "To run tests with coverage reporting, run",
+    	"commit": "To commit your changes, run",
+    	"fixLintingErrors": "To fix linting errors, run",
+    	"firstRelease": "To run your first release, run",
+    	"subsequentRelease": "To run subsequent releases, run",
+    	"releaseDryRun": "To run release dry-run, run"
+    }
+  }
+}

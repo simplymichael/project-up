@@ -6,4 +6,5 @@ _tests/
 .travis.yml
 .nyc_output/
 .markdown-viewer
+.localeEx
 _test-directory
