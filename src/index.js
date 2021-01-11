@@ -20,6 +20,7 @@ const currentYear = new Date().getFullYear();
 const rootDir = path.resolve(__dirname, '..');
 const templatesDir = `${rootDir}${SEP}src${SEP}templates`;
 const log = console.log;
+const WHITESPACE_REGEX = /\s+/;
 const marker = {
   error: (msg) => coloredMsg(msg, 'red'),
   info: (msg) => coloredMsg(msg, 'cyan'),
@@ -50,6 +51,7 @@ async function setup(projectName, opts) {
   let ownerName;
   let ownerEmail;
   let projectDesc;
+  let projectKeywords = [];
   let dependencies = [];
   let devDependencies = [
     'commitizen',
@@ -59,7 +61,6 @@ async function setup(projectName, opts) {
     'run-script-os',
     'standard-version'
   ];
-  const splitRegex = /\s+,?\s+/;
   const { directory: projectDir, locale, verbose } = opts;
   const gitInitialized = fileExists(`${cwd}/.git`);
   const npmInitialized = fileExists(`${cwd}/package.json`);
@@ -71,7 +72,9 @@ async function setup(projectName, opts) {
   }
 
   if(npmInitialized) {
-    projectDesc = requireWithoutCache(`${cwd}/package.json`).description.trim();
+    const pj = requireWithoutCache(`${cwd}/package.json`);
+    projectDesc = pj.description.trim();
+    projectKeywords = pj.keywords;
   }
 
   if(gitInitialized) {
@@ -93,6 +96,12 @@ async function setup(projectName, opts) {
       name: 'description',
       message: `${translate('questions.projectDesc')}:`,
       default: projectDesc
+    },
+    {
+      type: 'input',
+      name: 'keywords',
+      message: `${translate('questions.projectKeywords')}:`,
+      default: projectKeywords.length ? projectKeywords.sort().join(' ') : undefined
     },
     {
       type: 'input',
@@ -306,6 +315,15 @@ async function setup(projectName, opts) {
             [translate('questions.choices.project.name')]: projectName,
             [translate('questions.choices.project.directory')]: projectDir,
             [translate('questions.choices.project.description')]: answers['description'],
+            [translate('questions.choices.project.keywords')]: (
+              Array.isArray(projectKeywords)
+                ? projectKeywords.concat(answers['keywords'].split(WHITESPACE_REGEX))
+                : answers['keywords'].split(WHITESPACE_REGEX)
+            )
+              .filter(el => el.trim().length > 0)
+              .map(el => el.toLowerCase())
+              .map(el => customTrim(el, ','))
+              .sort(),
             [translate('questions.choices.project.owner')]: answers['name'] || ownerName
           },
           [translate('questions.choices.github.header')]: {
@@ -327,13 +345,13 @@ async function setup(projectName, opts) {
             .concat(answers['test-framework'].toLowerCase() === 'jasmine'
               ? ['jasmine'] : ['mocha', 'chai'])
             .concat([answers['linter'].toLowerCase()])
-            .concat(answers['dev-dependencies'].split(splitRegex))
-            .filter(el => el.length > 0)
+            .concat(answers['dev-dependencies'].split(WHITESPACE_REGEX))
+            .filter(el => el.trim().length > 0)
             .sort(),
         };
 
         if(answers['dependencies']) {
-          settings[translate('questions.choices.dependencies')] = answers['dependencies'].split(splitRegex);
+          settings[translate('questions.choices.dependencies')] = answers['dependencies'].split(WHITESPACE_REGEX);
         }
 
         if(answers['license'] !== translate('answers.unlicensed')) {
@@ -373,13 +391,14 @@ async function setup(projectName, opts) {
   }
 
   if(answers['dependencies']) {
-    const userDeps = answers['dependencies'].split(splitRegex);
+    const userDeps = answers['dependencies'].split(WHITESPACE_REGEX)
+      .filter(el => el.trim().length > 0);
 
     dependencies = dependencies.concat(userDeps);
   }
 
   if(answers['dev-dependencies']) {
-    const userDevDeps = answers['dev-dependencies'].split(splitRegex);
+    const userDevDeps = answers['dev-dependencies'].split(WHITESPACE_REGEX);
 
     devDependencies = devDependencies.concat(userDevDeps).sort();
   }
@@ -392,7 +411,7 @@ async function setup(projectName, opts) {
 
   devDependencies.push(answers['linter'].toLowerCase());
 
-  devDependencies = devDependencies.filter(el => el.length > 0);
+  devDependencies = devDependencies.filter(el => el.trim().length > 0);
 
   // If the directory is not a git-directory, then initialize git
   if(!gitInitialized) {
@@ -418,6 +437,7 @@ async function setup(projectName, opts) {
       translate('setup.npm.initializing'))).start();
     await npmInit({
       description: answers['description'],
+      keywords: answers['keywords'],
       license: getKeyByValue(licenses, answers['license']).toUpperCase(),
       githubUrl: answers['gh-url']
     });
@@ -450,6 +470,7 @@ async function setup(projectName, opts) {
   const pjSpinner = ora(marker.info(translate('setup.npm.updating'))).start();
   await writePackageJson({
     description: answers['description'],
+    keywords: answers['keywords'],
     license: getKeyByValue(licenses, answers['license']).toUpperCase(),
     githubUrl: answers['gh-url'],
     testFramework: testFramework,
@@ -560,11 +581,19 @@ function gitInit(opts) {
 async function npmInit(opts) {
   cp.execSync('npm init -y');
 
-  const { description, license, githubUrl } = opts;
+  const { description, keywords, license, githubUrl } = opts;
   const packageJson = requireWithoutCache(`${cwd}${SEP}package.json`);
 
   if(description && typeof description === 'string') {
     packageJson.description = description;
+  }
+
+  if(keywords && typeof keywords === 'string') {
+    packageJson.keywords = keywords.split(WHITESPACE_REGEX)
+      .filter(el => el.trim().length > 0)
+      .map(el => el.toLowerCase())
+      .map(el => customTrim(el, ','))
+      .sort();
   }
 
   if(license && typeof license === 'string') {
@@ -664,6 +693,7 @@ async function install(deps, devDeps) {
 async function writePackageJson(opts) {
   const {
     description,
+    keywords,
     license,
     githubUrl,
     linter,
@@ -719,6 +749,26 @@ async function writePackageJson(opts) {
 
   if(description && packageJson.description.trim().length === 0) {
     packageJson.description = description;
+  }
+
+  if(keywords) {
+    const currKeywords = packageJson.keywords
+      .slice()
+      .map(el => el.toLowerCase());
+    let newKeywords = keywords;
+    let updatedKeywords;
+
+    if(typeof newKeywords === 'string') {
+      newKeywords = newKeywords.split(WHITESPACE_REGEX)
+        .map(el => el.toLowerCase())
+        .map(el => customTrim(el, ','))
+        .filter(el => !currKeywords.includes(el));
+      updatedKeywords = currKeywords.concat(newKeywords);
+    }
+
+    packageJson.keywords = updatedKeywords
+      .filter(el => el.trim().length > 0)
+      .sort();
   }
 
   if(license && packageJson.license.trim().length === 0) {
@@ -904,6 +954,12 @@ function coloredMsg(msg, color) {
 
 function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
+}
+
+function customTrim(str, char = ',') {
+  return str.trim().replace(
+    new RegExp(`(^${char})|(${char}$)`, 'gm'), ''
+  );
 }
 
 /**

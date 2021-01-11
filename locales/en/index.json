@@ -12,12 +12,13 @@
     "somethingWrong": "Something has gone wrong"
   },
   "questions": {
-    "projectDesc": "description",
+    "projectDesc": "Project description",
+    "projectKeywords": "Keywords, separated by spaces",
     "createSrcDir": "Create source directory",
     "specifySrcDir": "Specify your source directory",
     "linter": "Linter",
-    "dependencies": "Dependencies, separated by spaces or commas: (dep@version dep2 dep3@version)",
-    "devDependencies": "Dev dependencies, separated by spaces or commas: (dep@version dep2 dep3@version)",
+    "dependencies": "Dependencies, separated by spaces: (dep@version dep2 dep3@version)",
+    "devDependencies": "Dev dependencies, separated by spaces: (dep@version dep2 dep3@version)",
     "github": {
       "configName": "Your name (git config user.name value)",
       "username": "Github username",
@@ -43,6 +44,7 @@
         "header": "Project",
         "name": "name",
         "description": "description",
+        "keywords": "keywords",
         "directory": "directory",
         "owner": "owner"
       },
@@ -68,7 +70,7 @@
       "dependencies": "Dependencies",
       "devDependencies": "Dev dependencies",
       "srcDir": "Source directory",
-      "review": "Please review selection",
+      "review": "Please review your selection",
       "proceed": "Proceed?"
     }
 	},
