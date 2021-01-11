@@ -35,7 +35,6 @@
       "framework": "Choose a test framework",
       "createDir": "Create test directory",
       "specifyDir": "Specify your test directory",
-      "directory": "Test directory",
       "filesExt": "Test files extension",
       "unlistedFilesExt": "Specify your test files extension"
     },
