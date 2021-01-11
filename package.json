@@ -10,7 +10,6 @@
     "commit": "git-cz",
     "lint": "./node_modules/.bin/eslint ./src",
     "lint:fix": "npm run lint -- --fix",
-    "prerelease": "npm run test:coverage",
     "release": "standard-version",
     "first-release": "npm run release -- --first-release && git push origin --tags",
     "release:dry-run": "npm run release -- --dry-run",
