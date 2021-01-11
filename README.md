@@ -33,7 +33,7 @@ Remember to wrap in quotes if the project name is multi-word with spaces: `proje
 - Setup conventional commits (using [commitizen][commitizen] and [cz-conventional-changelog][cz-conv])
 - Setup coverage recording (with [nyc][nyc])
 - Setup releasing (with [standard-version][standard-v])
-- Setup pre-commit and pre-release hooks
+- Setup pre-commit and pre-release hooks (with [ghooks][ghooks])
 - Generate sample test
 - Generate basic README file (with badges)
 - Generate License File (using [lice][lice])
@@ -43,16 +43,16 @@ Remember to wrap in quotes if the project name is multi-word with spaces: `proje
 
 First `cd` into the project directory, then run the appropriate script:
 
-| Action                        | Usage                     |
-| ------------------------------| ------------------------- |
-| Linting code                  | `npm run lint`            |
-| Fix linting errors            | `npm run lint:fix`        |
-| Commit staged changes         | `npm run commit`          |
-| Running tests                 | `npm test`                |
-| Running tests + code coverage | `npm run test:coverage`   |
-| First release                 | `npm run first-release`   |
-| Subsequent releases           | `npm run release`         |
-| Release dry-run               | `npm run release:dry-run` |
+| Action                    | Usage                     |
+| --------------------------| ------------------------- |
+| Linting code              | `npm run lint`            |
+| Fix linting errors        | `npm run lint:fix`        |
+| Commit staged changes     | `npm run commit`          |
+| Run tests                 | `npm test`                |
+| Run tests + code coverage | `npm run test:coverage`   |
+| First release             | `npm run first-release`   |
+| Subsequent releases       | `npm run release`         |
+| Release dry-run           | `npm run release:dry-run` |
 
 
 
@@ -60,6 +60,7 @@ First `cd` into the project directory, then run the appropriate script:
 [commitizen]: https://npm.im/commitizen
 [cz-conv]: https://npm.im/cz-conventional-changelog
 [eslint]: https://npm.im/eslint
+[ghooks]: https://npm.im/ghooks
 [jasmine]: https://npm.im/jasmine
 [lice]: https://npm.im/lice
 [mocha]: https://npm.im/mocha
